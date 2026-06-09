@@ -78,8 +78,11 @@ tg_send() {
   token=$(cat "$AS_BOTKEY" 2>/dev/null)
   chat=$(cat "$AS_CHATID" 2>/dev/null)
   [[ -z "$token" || -z "$chat" ]] && return 1
+  # Accept both real newlines and literal %0A markers in the message body.
+  text=${text//%0A/$'\n'}
   curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
     -d chat_id="${chat}" -d parse_mode="HTML" \
+    -d disable_web_page_preview="true" \
     --data-urlencode "text=${text}" >/dev/null 2>&1
 }
 

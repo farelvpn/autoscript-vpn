@@ -12,13 +12,13 @@ db_init
 domain=$(get_domain)
 
 clear
-line
-echo -e "${WHITE}  ADD VLESS ACCOUNT${NC}"
-line
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;41;36m                   ADD VLESS ACCOUNT                        \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
 
 # Username
 while true; do
-  read -rp "Username: " user
+  read -rp "Username       : " user
   if ! valid_username "$user"; then
     err "Username must be 3-32 chars: letters, numbers, underscore."; continue
   fi
@@ -29,17 +29,16 @@ while true; do
 done
 
 # UUID
-read -rp "Custom UUID (Enter to auto-generate): " uuid
+read -rp "Custom UUID    : (Enter to auto) " uuid
 if [[ -z "$uuid" ]]; then
   uuid=$(gen_uuid)
 elif ! valid_uuid "$uuid"; then
   err "Invalid UUID format."; exit 1
 fi
 
-# Quota / IP / duration
-while true; do read -rp "Quota (GB, 0=unlimited): " quota; valid_number "$quota" && break; err "Number only."; done
-while true; do read -rp "Limit IP (0=unlimited): " iplimit; valid_number "$iplimit" && break; err "Number only."; done
-while true; do read -rp "Duration (e.g. 30m/2h/1d): " duration; valid_duration "$duration" && break; err "Format: 30m, 2h, 1d."; done
+while true; do read -rp "Quota (GB,0=unl): " quota; valid_number "$quota" && break; err "Number only."; done
+while true; do read -rp "Limit IP (0=unl): " iplimit; valid_number "$iplimit" && break; err "Number only."; done
+while true; do read -rp "Expired (30m/2h/1d): " duration; valid_duration "$duration" && break; err "Format: 30m, 2h, 1d."; done
 
 secs=$(duration_to_seconds "$duration")
 exp_epoch=$(( $(date +%s) + secs ))
@@ -48,37 +47,58 @@ if ! acc_xray_create "vless" "$user" "$uuid" "$quota" "$iplimit" "$exp_epoch"; t
   err "Failed to create account."; exit 1
 fi
 
-exp_disp=$(date -d "@${exp_epoch}" +"%d-%m-%Y %H:%M:%S")
+exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 [[ "$quota" == "0" ]] && quota_disp="Unlimited" || quota_disp="${quota} GB"
 [[ "$iplimit" == "0" ]] && ip_disp="Unlimited" || ip_disp="$iplimit"
 
-link_tls="vless://${uuid}@${domain}:443?path=/vless&security=tls&encryption=none&type=ws&host=${domain}&sni=${domain}#${user}"
-link_http="vless://${uuid}@${domain}:80?path=/vless&encryption=none&type=ws&host=${domain}#${user}"
+vlesslink1="vless://${uuid}@${domain}:443?path=/vless&security=tls&encryption=none&type=ws&host=${domain}&sni=${domain}#${user}"
+vlesslink2="vless://${uuid}@${domain}:80?path=/vless&encryption=none&type=ws&host=${domain}#${user}"
 
-tg_send "<b>[ VLESS ACCOUNT ]</b>
-Hostname : <code>${domain}</code>
-Username : <code>${user}</code>
-UUID     : <code>${uuid}</code>
-Quota    : <code>${quota_disp}</code>
-Limit IP : <code>${ip_disp}</code>
-Expired  : <code>${exp_disp}</code>
-<code>${link_tls}</code>"
+# Telegram (HTML, copy-paste friendly for sellers to forward)
+TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>      ⊹ VLESS ACCOUNT ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Remarks   :</b> <code>${user}</code>
+<b>Host/IP   :</b> <code>${domain}</code>
+<b>Port TLS  :</b> <code>443</code>
+<b>Port HTTP :</b> <code>80</code>
+<b>UUID      :</b> <code>${uuid}</code>
+<b>Encryption:</b> <code>none</code>
+<b>Network   :</b> <code>ws</code>
+<b>Path      :</b> <code>/vless</code>
+<b>Quota     :</b> <code>${quota_disp}</code>
+<b>Limit IP  :</b> <code>${ip_disp}</code>
+<b>Expired   :</b> <code>${exp_disp}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link TLS  :</b>
+<code>${vlesslink1}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link HTTP :</b>
+<code>${vlesslink2}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
+tg_send "$TEKS"
 
 clear
-line
-echo -e "${WHITE}  VLESS ACCOUNT CREATED${NC}"
-line
-echo -e "Hostname    : ${domain}"
-echo -e "Username    : ${user}"
-echo -e "UUID        : ${uuid}"
-echo -e "Quota       : ${quota_disp}"
-echo -e "Limit IP    : ${ip_disp}"
-echo -e "Expired     : ${exp_disp}"
-echo -e "Path WS     : /vless"
-line
-echo -e "Link TLS    :\n${link_tls}"
-line
-echo -e "Link HTTP   :\n${link_http}"
-line
-read -n 1 -s -r -p "Press any key to menu..."
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;42;30m                 VLESS ACCOUNT CREATED                      \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Remarks      : ${user}"
+echo -e " Host/IP      : ${domain}"
+echo -e " Port TLS     : 443"
+echo -e " Port HTTP    : 80"
+echo -e " UUID         : ${uuid}"
+echo -e " Encryption   : none"
+echo -e " Network      : ws"
+echo -e " Path         : /vless"
+echo -e " Quota        : ${quota_disp}"
+echo -e " Limit IP     : ${ip_disp}"
+echo -e " Expired      : ${exp_disp}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Link TLS  :"
+echo -e " ${vlesslink1}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Link HTTP :"
+echo -e " ${vlesslink2}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+read -n 1 -s -r -p " Press any key to back to menu..."
 menu

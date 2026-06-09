@@ -12,14 +12,14 @@ domain=$(get_domain)
 ip=$(get_ip)
 
 clear
-line
-echo -e "${WHITE}  SSH ACCOUNT DETAILS${NC}"
-line
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;41;36m                  SSH ACCOUNT DETAILS                       \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
 db_query "SELECT username, datetime(expired_at,'unixepoch','localtime')
           FROM accounts WHERE protocol='ssh' AND status!='deleted'
           ORDER BY username;" \
-  | while IFS='|' read -r u e; do printf "%-20s %-22s\n" "$u" "$e"; done
-line
+  | while IFS='|' read -r u e; do printf " %-20s %s\n" "$u" "$e"; done
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
 
 read -rp "Enter username: " user
 if ! valid_username "$user" || ! db_account_exists "ssh" "$user"; then
@@ -31,19 +31,22 @@ ipl=$(db_get_field "ssh" "$user" "limit_ip"); [[ "$ipl" == "0" ]] && ipl="Unlimi
 exp=$(db_query "SELECT datetime(expired_at,'unixepoch','localtime') FROM accounts WHERE protocol='ssh' AND username='$(sql_escape "$user")' AND status!='deleted';")
 
 clear
-line
-echo -e "${WHITE}  SSH ACCOUNT DETAILS${NC}"
-line
-echo -e "Domain   : ${domain} / ${ip}"
-echo -e "Username : ${user}"
-echo -e "Password : ${pass}"
-echo -e "Limit IP : ${ipl}"
-echo -e "Expired  : ${exp}"
-line
-echo -e "Port OpenSSH : 109     Port WS HTTP : 80, 8888"
-echo -e "Port WS TLS  : 443     Port BadVPN  : 7300"
-line
-echo -e "Config HTTP Custom: ${domain}:1-65535@${user}:${pass}"
-line
-read -n 1 -s -r -p "Press any key to menu..."
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;42;30m                  SSH ACCOUNT DETAILS                       \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Username     : ${user}"
+echo -e " Password     : ${pass}"
+echo -e " Host/IP      : ${domain} / ${ip}"
+echo -e " Limit IP     : ${ipl}"
+echo -e " Expired      : ${exp}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Port OpenSSH : 22, 109"
+echo -e " Port WS HTTP : 80, 8888"
+echo -e " Port WS TLS  : 443"
+echo -e " Port BadVPN  : 7300"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Config HTTP Custom :"
+echo -e " ${domain}:1-65535@${user}:${pass}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+read -n 1 -s -r -p " Press any key to back to menu..."
 menu

@@ -738,17 +738,16 @@ fi
 # Setup Crontab
 dnf install cronie -y
 
-# Setup Auto Backup
+# Auto-expire (DB-driven), backup, log rotation, and SSH IP-limit enforcement.
+# VLESS/VMESS/Trojan quota & IP-limit run as looping systemd services (below),
+# so they are intentionally NOT in cron.
 echo "* * * * * root xp-ssh" >> /etc/crontab
 echo "* * * * * root xp-vless" >> /etc/crontab
 echo "* * * * * root xp-vmess" >> /etc/crontab
 echo "* * * * * root xp-trojan" >> /etc/crontab
+echo "*/2 * * * * root limit-ip-ssh" >> /etc/crontab
 echo "0 * * * * root backup" >> /etc/crontab
 echo "0 0 * * * root fixlog" >> /etc/crontab
-echo "0 * * * * root cek-ssh" >> /etc/crontab
-echo "0 * * * * root cek-vmess" >> /etc/crontab
-echo "0 * * * * root cek-vless" >> /etc/crontab
-echo "0 * * * * root cek-trojan" >> /etc/crontab
 
 # restart service
 systemctl daemon-reload

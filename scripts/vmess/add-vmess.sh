@@ -20,24 +20,24 @@ vmess_link() {
 }
 
 clear
-line
-echo -e "${WHITE}  ADD VMESS ACCOUNT${NC}"
-line
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;41;36m                   ADD VMESS ACCOUNT                        \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
 
 while true; do
-  read -rp "Username: " user
+  read -rp "Username       : " user
   if ! valid_username "$user"; then err "Username 3-32 chars: letters, numbers, underscore."; continue; fi
   if db_account_exists "vmess" "$user" || cfg_client_exists "$user"; then err "Username '$user' already exists."; continue; fi
   break
 done
 
-read -rp "Custom UUID (Enter to auto-generate): " uuid
+read -rp "Custom UUID    : (Enter to auto) " uuid
 if [[ -z "$uuid" ]]; then uuid=$(gen_uuid)
 elif ! valid_uuid "$uuid"; then err "Invalid UUID format."; exit 1; fi
 
-while true; do read -rp "Quota (GB, 0=unlimited): " quota; valid_number "$quota" && break; err "Number only."; done
-while true; do read -rp "Limit IP (0=unlimited): " iplimit; valid_number "$iplimit" && break; err "Number only."; done
-while true; do read -rp "Duration (e.g. 30m/2h/1d): " duration; valid_duration "$duration" && break; err "Format: 30m, 2h, 1d."; done
+while true; do read -rp "Quota (GB,0=unl): " quota; valid_number "$quota" && break; err "Number only."; done
+while true; do read -rp "Limit IP (0=unl): " iplimit; valid_number "$iplimit" && break; err "Number only."; done
+while true; do read -rp "Expired (30m/2h/1d): " duration; valid_duration "$duration" && break; err "Format: 30m, 2h, 1d."; done
 
 secs=$(duration_to_seconds "$duration")
 exp_epoch=$(( $(date +%s) + secs ))
@@ -46,37 +46,57 @@ if ! acc_xray_create "vmess" "$user" "$uuid" "$quota" "$iplimit" "$exp_epoch"; t
   err "Failed to create account."; exit 1
 fi
 
-exp_disp=$(date -d "@${exp_epoch}" +"%d-%m-%Y %H:%M:%S")
+exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 [[ "$quota" == "0" ]] && quota_disp="Unlimited" || quota_disp="${quota} GB"
 [[ "$iplimit" == "0" ]] && ip_disp="Unlimited" || ip_disp="$iplimit"
 
-link_tls=$(vmess_link 443 tls)
-link_http=$(vmess_link 80 none)
+vmesslink1=$(vmess_link 443 tls)
+vmesslink2=$(vmess_link 80 none)
 
-tg_send "<b>[ VMESS ACCOUNT ]</b>
-Hostname : <code>${domain}</code>
-Username : <code>${user}</code>
-UUID     : <code>${uuid}</code>
-Quota    : <code>${quota_disp}</code>
-Limit IP : <code>${ip_disp}</code>
-Expired  : <code>${exp_disp}</code>
-<code>${link_tls}</code>"
+TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>      ⊹ VMESS ACCOUNT ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Remarks   :</b> <code>${user}</code>
+<b>Host/IP   :</b> <code>${domain}</code>
+<b>Port TLS  :</b> <code>443</code>
+<b>Port HTTP :</b> <code>80</code>
+<b>UUID      :</b> <code>${uuid}</code>
+<b>AlterId   :</b> <code>0</code>
+<b>Network   :</b> <code>ws</code>
+<b>Path      :</b> <code>/vmess</code>
+<b>Quota     :</b> <code>${quota_disp}</code>
+<b>Limit IP  :</b> <code>${ip_disp}</code>
+<b>Expired   :</b> <code>${exp_disp}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link TLS  :</b>
+<code>${vmesslink1}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link HTTP :</b>
+<code>${vmesslink2}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
+tg_send "$TEKS"
 
 clear
-line
-echo -e "${WHITE}  VMESS ACCOUNT CREATED${NC}"
-line
-echo -e "Hostname    : ${domain}"
-echo -e "Username    : ${user}"
-echo -e "UUID        : ${uuid}"
-echo -e "Quota       : ${quota_disp}"
-echo -e "Limit IP    : ${ip_disp}"
-echo -e "Expired     : ${exp_disp}"
-echo -e "Path WS     : /vmess"
-line
-echo -e "Link TLS    :\n${link_tls}"
-line
-echo -e "Link HTTP   :\n${link_http}"
-line
-read -n 1 -s -r -p "Press any key to menu..."
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;42;30m                 VMESS ACCOUNT CREATED                      \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Remarks      : ${user}"
+echo -e " Host/IP      : ${domain}"
+echo -e " Port TLS     : 443"
+echo -e " Port HTTP    : 80"
+echo -e " UUID         : ${uuid}"
+echo -e " AlterId      : 0"
+echo -e " Network      : ws"
+echo -e " Path         : /vmess"
+echo -e " Quota        : ${quota_disp}"
+echo -e " Limit IP     : ${ip_disp}"
+echo -e " Expired      : ${exp_disp}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Link TLS  :"
+echo -e " ${vmesslink1}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Link HTTP :"
+echo -e " ${vmesslink2}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+read -n 1 -s -r -p " Press any key to back to menu..."
 menu

@@ -12,24 +12,24 @@ db_init
 domain=$(get_domain)
 
 clear
-line
-echo -e "${WHITE}  ADD TROJAN ACCOUNT${NC}"
-line
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;41;36m                   ADD TROJAN ACCOUNT                       \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
 
 while true; do
-  read -rp "Username: " user
+  read -rp "Username       : " user
   if ! valid_username "$user"; then err "Username 3-32 chars: letters, numbers, underscore."; continue; fi
   if db_account_exists "trojan" "$user" || cfg_client_exists "$user"; then err "Username '$user' already exists."; continue; fi
   break
 done
 
-read -rp "Custom password/UUID (Enter to auto-generate): " secret
+read -rp "Custom Key     : (Enter to auto) " secret
 if [[ -z "$secret" ]]; then secret=$(gen_uuid)
-elif [[ "$secret" == *[$'\n\r\t ']* ]]; then err "Secret must not contain whitespace."; exit 1; fi
+elif [[ "$secret" == *[$'\n\r\t ']* ]]; then err "Key must not contain whitespace."; exit 1; fi
 
-while true; do read -rp "Quota (GB, 0=unlimited): " quota; valid_number "$quota" && break; err "Number only."; done
-while true; do read -rp "Limit IP (0=unlimited): " iplimit; valid_number "$iplimit" && break; err "Number only."; done
-while true; do read -rp "Duration (e.g. 30m/2h/1d): " duration; valid_duration "$duration" && break; err "Format: 30m, 2h, 1d."; done
+while true; do read -rp "Quota (GB,0=unl): " quota; valid_number "$quota" && break; err "Number only."; done
+while true; do read -rp "Limit IP (0=unl): " iplimit; valid_number "$iplimit" && break; err "Number only."; done
+while true; do read -rp "Expired (30m/2h/1d): " duration; valid_duration "$duration" && break; err "Format: 30m, 2h, 1d."; done
 
 secs=$(duration_to_seconds "$duration")
 exp_epoch=$(( $(date +%s) + secs ))
@@ -38,34 +38,46 @@ if ! acc_xray_create "trojan" "$user" "$secret" "$quota" "$iplimit" "$exp_epoch"
   err "Failed to create account."; exit 1
 fi
 
-exp_disp=$(date -d "@${exp_epoch}" +"%d-%m-%Y %H:%M:%S")
+exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 [[ "$quota" == "0" ]] && quota_disp="Unlimited" || quota_disp="${quota} GB"
 [[ "$iplimit" == "0" ]] && ip_disp="Unlimited" || ip_disp="$iplimit"
 
-link_tls="trojan://${secret}@${domain}:443?type=ws&security=tls&host=${domain}&path=/trojan&sni=${domain}#${user}"
+trojanlink1="trojan://${secret}@${domain}:443?type=ws&security=tls&host=${domain}&path=/trojan&sni=${domain}#${user}"
 
-tg_send "<b>[ TROJAN ACCOUNT ]</b>
-Hostname : <code>${domain}</code>
-Username : <code>${user}</code>
-Key      : <code>${secret}</code>
-Quota    : <code>${quota_disp}</code>
-Limit IP : <code>${ip_disp}</code>
-Expired  : <code>${exp_disp}</code>
-<code>${link_tls}</code>"
+TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>      ⊹ TROJAN ACCOUNT ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Remarks   :</b> <code>${user}</code>
+<b>Host/IP   :</b> <code>${domain}</code>
+<b>Port TLS  :</b> <code>443</code>
+<b>Key       :</b> <code>${secret}</code>
+<b>Network   :</b> <code>ws</code>
+<b>Path      :</b> <code>/trojan</code>
+<b>Quota     :</b> <code>${quota_disp}</code>
+<b>Limit IP  :</b> <code>${ip_disp}</code>
+<b>Expired   :</b> <code>${exp_disp}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link TLS  :</b>
+<code>${trojanlink1}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
+tg_send "$TEKS"
 
 clear
-line
-echo -e "${WHITE}  TROJAN ACCOUNT CREATED${NC}"
-line
-echo -e "Hostname    : ${domain}"
-echo -e "Username    : ${user}"
-echo -e "Key         : ${secret}"
-echo -e "Quota       : ${quota_disp}"
-echo -e "Limit IP    : ${ip_disp}"
-echo -e "Expired     : ${exp_disp}"
-echo -e "Path WS     : /trojan"
-line
-echo -e "Link TLS    :\n${link_tls}"
-line
-read -n 1 -s -r -p "Press any key to menu..."
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;42;30m                 TROJAN ACCOUNT CREATED                     \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Remarks      : ${user}"
+echo -e " Host/IP      : ${domain}"
+echo -e " Port TLS     : 443"
+echo -e " Key          : ${secret}"
+echo -e " Network      : ws"
+echo -e " Path         : /trojan"
+echo -e " Quota        : ${quota_disp}"
+echo -e " Limit IP     : ${ip_disp}"
+echo -e " Expired      : ${exp_disp}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Link TLS  :"
+echo -e " ${trojanlink1}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+read -n 1 -s -r -p " Press any key to back to menu..."
 menu

@@ -20,35 +20,61 @@ vmess_link() {
 }
 
 clear
-line
-echo -e "${WHITE}  TRIAL VMESS ACCOUNT${NC}"
-line
-while true; do read -rp "Duration (e.g. 30m/1h): " duration; valid_duration "$duration" && break; err "Format: 30m, 1h, 1d."; done
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;41;36m                 CREATE VMESS TRIAL ACCOUNT                 \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+while true; do read -rp "Expired (60m/1h/1d): " duration; valid_duration "$duration" && break; err "Format: 60m, 1h, 1d."; done
 
 user="trial$(gen_pass 6)"
 uuid=$(gen_uuid)
 secs=$(duration_to_seconds "$duration")
 exp_epoch=$(( $(date +%s) + secs ))
 
-if ! acc_xray_create "vmess" "$user" "$uuid" 10 2 "$exp_epoch"; then
-  err "Failed to create trial."; exit 1
-fi
+if ! acc_xray_create "vmess" "$user" "$uuid" 10 2 "$exp_epoch"; then err "Failed to create trial."; exit 1; fi
 
-exp_disp=$(date -d "@${exp_epoch}" +"%d-%m-%Y %H:%M:%S")
-link_tls=$(vmess_link 443 tls)
+exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
+vmesslink1=$(vmess_link 443 tls)
+vmesslink2=$(vmess_link 80 none)
 
-tg_send "<b>[ VMESS TRIAL ]</b>%0AUsername: <code>${user}</code>%0AExpired: <code>${exp_disp}</code>%0A<code>${link_tls}</code>"
+TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>    ⊹ VMESS TRIAL ACCOUNT ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Remarks   :</b> <code>${user}</code>
+<b>Host/IP   :</b> <code>${domain}</code>
+<b>Port TLS  :</b> <code>443</code>
+<b>Port HTTP :</b> <code>80</code>
+<b>UUID      :</b> <code>${uuid}</code>
+<b>AlterId   :</b> <code>0</code>
+<b>Network   :</b> <code>ws</code>
+<b>Path      :</b> <code>/vmess</code>
+<b>Quota     :</b> <code>10 GB</code>
+<b>Limit IP  :</b> <code>2</code>
+<b>Expired   :</b> <code>${exp_disp}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link TLS  :</b>
+<code>${vmesslink1}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link HTTP :</b>
+<code>${vmesslink2}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
+tg_send "$TEKS"
 
 clear
-line
-echo -e "${WHITE}  VMESS TRIAL CREATED${NC}"
-line
-echo -e "Username : ${user}"
-echo -e "UUID     : ${uuid}"
-echo -e "Quota    : 10 GB    Limit IP : 2"
-echo -e "Expired  : ${exp_disp}"
-line
-echo -e "Link TLS :\n${link_tls}"
-line
-read -n 1 -s -r -p "Press any key to menu..."
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[0;42;30m                 VMESS TRIAL CREATED                        \e[0m"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Remarks      : ${user}"
+echo -e " Host/IP      : ${domain}"
+echo -e " UUID         : ${uuid}"
+echo -e " Network/Path : ws  /vmess"
+echo -e " Quota        : 10 GB     Limit IP : 2"
+echo -e " Expired      : ${exp_disp}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Link TLS  :"
+echo -e " ${vmesslink1}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e " Link HTTP :"
+echo -e " ${vmesslink2}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+read -n 1 -s -r -p " Press any key to back to menu..."
 menu

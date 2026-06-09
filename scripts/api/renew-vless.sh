@@ -118,6 +118,12 @@ renew_vless_account() {
         return 1
     fi
 
+    # Validasi format username (cegah path traversal & injeksi sed)
+    if ! [[ "$renew_user" =~ ^[a-zA-Z0-9_]{1,32}$ ]]; then
+        echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Invalid username format\"}"
+        return 1
+    fi
+
     if [[ -z "$renew_days" ]]; then
         echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Days parameter is required\"}"
         return 1

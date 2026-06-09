@@ -36,6 +36,11 @@ case $prot_sel in
 esac
 
 read -p "Account Prefix (e.g., user): " prefix
+# Validasi prefix: huruf, angka, underscore (1-16 char). Cegah path traversal & injeksi.
+if ! [[ "$prefix" =~ ^[a-zA-Z0-9_]{1,16}$ ]]; then
+    echo "Prefix can only contain letters, numbers and underscores (1-16 chars)."
+    exit 1
+fi
 read -p "Number of Accounts: " count
 
 if ! [[ "$count" =~ ^[0-9]+$ ]] || [ "$count" -lt 1 ]; then

@@ -61,6 +61,7 @@ cert() {
         
     # Update HAProxy combined certificate
     cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/haproxy.pem > /dev/null
+    chmod 600 /etc/xray/xray.key /etc/haproxy/haproxy.pem 2>/dev/null
 
     sleep 2
     clear

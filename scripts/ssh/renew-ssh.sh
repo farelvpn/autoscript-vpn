@@ -49,6 +49,10 @@ echo "------------------------------------------------------------"
 read -p "Masukkan username yang ingin diperpanjang: " USER
 read -p "Tambahkan masa aktif (hari): " DAYS
 
+if ! [[ "$USER" =~ ^[a-zA-Z0-9_]{3,32}$ ]]; then
+    echo "[!] Format username tidak valid."
+    exit 1
+fi
 if [[ ! -f "$DB_PATH/$USER.txt" ]]; then
     echo "[!] Username tidak ditemukan di database."
     exit 1

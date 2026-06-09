@@ -21,7 +21,17 @@ backup_dir="/root/backup"
 bot_token_file="/etc/xray/bot.key"
 chat_id_file="/etc/xray/client.id"
 USERNAME="risqinf"
-PASSWORD="risqinf"
+
+# Backup encryption password: read from secure store, fallback to generated.
+backup_pass_file="/etc/xray/backup.pass"
+if [[ -s "$backup_pass_file" ]]; then
+    PASSWORD=$(cat "$backup_pass_file")
+else
+    PASSWORD=$(openssl rand -base64 18)
+    mkdir -p /etc/xray
+    printf '%s' "$PASSWORD" > "$backup_pass_file"
+    chmod 600 "$backup_pass_file"
+fi
 
 # Autentikasi dan Informasi Server
 domain=$(cat /etc/xray/domain 2>/dev/null || echo "Unknown")

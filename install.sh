@@ -57,9 +57,43 @@ fi
 print_header
 echo -e "${LIGHT}Preparation: Security Hardening${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-read -p "Enter new root password: " root_pass
+while true; do
+    read -rsp "Enter new root password: " root_pass; echo
+    if [[ -z "$root_pass" ]]; then
+        print_error "Root password cannot be empty."
+        continue
+    fi
+    if [[ ${#root_pass} -lt 8 ]]; then
+        print_warn "Password is shorter than 8 characters. Use a stronger one."
+    fi
+    read -rsp "Confirm new root password: " root_pass2; echo
+    [[ "$root_pass" == "$root_pass2" ]] && break
+    print_error "Passwords do not match. Try again."
+done
 echo "root:$root_pass" | chpasswd
 print_success "Root password updated successfully."
+
+# Backup encryption password (stored securely in /etc/xray)
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+mkdir -p /etc/xray
+chmod 700 /etc/xray
+while true; do
+    read -rsp "Enter backup encryption password: " backup_pass; echo
+    if [[ -z "$backup_pass" ]]; then
+        print_error "Backup password cannot be empty."
+        continue
+    fi
+    if [[ ${#backup_pass} -lt 8 ]]; then
+        print_warn "Backup password is shorter than 8 characters. Use a stronger one."
+    fi
+    read -rsp "Confirm backup encryption password: " backup_pass2; echo
+    [[ "$backup_pass" == "$backup_pass2" ]] && break
+    print_error "Passwords do not match. Try again."
+done
+printf '%s' "$backup_pass" > /etc/xray/backup.pass
+chmod 600 /etc/xray/backup.pass
+unset root_pass root_pass2 backup_pass backup_pass2
+print_success "Backup password saved to /etc/xray/backup.pass (chmod 600)."
 sleep 1
 
 print_info "Updating system repositories..."
@@ -144,14 +178,35 @@ else
 fi
 
 # Ini firewall
-print_info "Hardening Firewall (firewalld)..."
+print_info "Hardening Firewall (firewalld - strict allowlist)..."
 dnf install firewalld -y >/dev/null 2>&1
 systemctl enable firewalld --now >/dev/null 2>&1
-firewall-cmd --add-port=1-65535/tcp --permanent >/dev/null 2>&1
-firewall-cmd --add-port=1-65535/udp --permanent >/dev/null 2>&1
-firewall-cmd --add-service=ssh --permanent >/dev/null 2>&1
+
+# Ensure the default zone denies anything not explicitly allowed.
+firewall-cmd --set-default-zone=public >/dev/null 2>&1
+firewall-cmd --permanent --zone=public --set-target=default >/dev/null 2>&1
+
+# Remove any previously-opened wide ranges (idempotent cleanup on re-run).
+firewall-cmd --permanent --zone=public --remove-port=1-65535/tcp >/dev/null 2>&1
+firewall-cmd --permanent --zone=public --remove-port=1-65535/udp >/dev/null 2>&1
+
+# --- Allowlist: only the ports the stack actually uses ---
+# SSH management
+firewall-cmd --permanent --zone=public --add-port=22/tcp   >/dev/null 2>&1   # OpenSSH
+firewall-cmd --permanent --zone=public --add-port=3303/tcp >/dev/null 2>&1   # OpenSSH (alt)
+firewall-cmd --permanent --zone=public --add-port=109/tcp  >/dev/null 2>&1   # Dropbear
+# Web / proxy entrypoints (HAProxy -> Nginx -> Xray)
+firewall-cmd --permanent --zone=public --add-port=80/tcp   >/dev/null 2>&1   # HTTP
+firewall-cmd --permanent --zone=public --add-port=443/tcp  >/dev/null 2>&1   # HTTPS/TLS
+# BadVPN UDPGW
+firewall-cmd --permanent --zone=public --add-port=7300/udp >/dev/null 2>&1
+# OpenVPN
+firewall-cmd --permanent --zone=public --add-port=1194/tcp >/dev/null 2>&1   # OpenVPN TCP
+firewall-cmd --permanent --zone=public --add-port=2200/udp >/dev/null 2>&1   # OpenVPN UDP
+
 firewall-cmd --reload >/dev/null 2>&1
-print_success "Firewall rules applied."
+print_success "Firewall locked down (allowlist only)."
+print_info "Internal services (Xray API 10085, WebAPI 9000, nginx 81/444) remain bound to 127.0.0.1."
 
 # Enterprise Sysctl Tuning
 print_info "Applying Enterprise Network Tweak (BBR, High-Conn)..."
@@ -440,7 +495,8 @@ systemctl stop httpd nginx >/dev/null 2>&1
 certbot certonly --standalone --preferred-challenges http --agree-tos --email www@${domain} -d $domain --non-interactive
 cp /etc/letsencrypt/live/$domain/fullchain.pem /etc/xray/xray.crt
 cp /etc/letsencrypt/live/$domain/privkey.pem /etc/xray/xray.key
-chmod 644 /etc/xray/xray.*
+chmod 644 /etc/xray/xray.crt
+chmod 600 /etc/xray/xray.key
 print_success "Certificates issued."
 
 # Setup Nginx
@@ -503,10 +559,8 @@ upstream trojan_ws {
 }
 
 server {
-    listen 81 default_server proxy_protocol;
-    listen [::]:81 default_server proxy_protocol;
-    listen 444 ssl http2 default_server proxy_protocol;
-    listen [::]:444 ssl http2 default_server proxy_protocol;
+    listen 127.0.0.1:81 default_server proxy_protocol;
+    listen 127.0.0.1:444 ssl http2 default_server proxy_protocol;
 
     server_name ${domain};
 
@@ -583,7 +637,7 @@ haproxy_install_logic() {
     # Generate combined certificate for HAProxy
     mkdir -p /etc/haproxy
     cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/haproxy.pem > /dev/null
-    chmod 644 /etc/haproxy/haproxy.pem
+    chmod 600 /etc/haproxy/haproxy.pem
 
     cat > /etc/haproxy/haproxy.cfg <<EOF
 global

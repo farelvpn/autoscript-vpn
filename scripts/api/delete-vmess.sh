@@ -102,6 +102,12 @@ delete_vmess_account() {
         return 1
     fi
 
+    # Validasi format username (cegah path traversal & injeksi sed)
+    if ! [[ "$delete_user" =~ ^[a-zA-Z0-9_]{1,32}$ ]]; then
+        echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Invalid username format\"}"
+        return 1
+    fi
+
     # Check if user exists in database
     if [[ ! -f "/etc/xray/database/vmess/${delete_user}.txt" ]]; then
         echo "{\"status\": \"false\", \"code\": 404, \"message\": \"User '$delete_user' not found in database\"}"

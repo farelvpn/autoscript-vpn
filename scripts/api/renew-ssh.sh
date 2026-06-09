@@ -70,13 +70,19 @@ extend_ssh_account() {
         return 1
     fi
 
+    # Validasi format username (cegah path traversal & injeksi)
+    if ! [[ "$username" =~ ^[a-zA-Z0-9_]{3,32}$ ]]; then
+        echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Invalid username format\"}"
+        return 1
+    fi
+
     if [[ -z "$days" ]]; then
         echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Days parameter is required\"}"
         return 1
     fi
 
-    if ! [[ $days =~ ^[0-9]+$ ]]; then
-        echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Days must be a positive number\"}"
+    if ! [[ $days =~ ^[0-9]+$ ]] || [[ $days -lt 1 ]] || [[ $days -gt 3650 ]]; then
+        echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Days must be a number between 1 and 3650\"}"
         return 1
     fi
 

@@ -57,7 +57,7 @@ echo ""
 
 read -p "Username SSH to Delete : " Pengguna
 
-if [[ -n "$Pengguna" ]]; then
+if [[ -n "$Pengguna" ]] && [[ "$Pengguna" =~ ^[a-zA-Z0-9_]{3,32}$ ]]; then
     if [[ -f "$DB_PATH/$Pengguna.txt" ]]; then
         # Pindahkan file username.txt ke recovery
         mv "$DB_PATH/$Pengguna.txt" "$RECOVERY_PATH/$Pengguna.txt"

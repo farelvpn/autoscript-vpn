@@ -61,8 +61,26 @@ masa=$(echo "$input_data" | jq -r '.expired')
 limit_ip=$(echo "$input_data" | jq -r '.limit_ip')
 
 # Validasi input
-if [[ -z "$username" || -z "$password" || -z "$masa" ]]; then
-    echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Missing required fields: username, password, masa\"}"
+if [[ -z "$username" || "$username" == "null" || -z "$password" || "$password" == "null" || -z "$masa" || "$masa" == "null" ]]; then
+    echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Missing required fields: username, password, expired\"}"
+    exit 1
+fi
+
+# Validasi username: huruf, angka, underscore (3-32 char). Cegah path traversal & injeksi argumen.
+if ! [[ "$username" =~ ^[a-zA-Z0-9_]{3,32}$ ]]; then
+    echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Username can only contain letters, numbers and underscores (3-32 chars)\"}"
+    exit 1
+fi
+
+# Validasi password: tanpa karakter kontrol/spasi/titik dua (cegah injeksi chpasswd)
+if [[ "$password" == *[$'\n\r\t:']* ]] || [[ "$password" == *" "* ]]; then
+    echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Password must not contain spaces, tabs, newlines or colons\"}"
+    exit 1
+fi
+
+# Validasi masa: angka 1-3650 hari
+if ! [[ "$masa" =~ ^[0-9]+$ ]] || [[ "$masa" -lt 1 ]] || [[ "$masa" -gt 3650 ]]; then
+    echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Expired must be a number between 1 and 3650 days\"}"
     exit 1
 fi
 
@@ -80,10 +98,10 @@ exp_system=$(date +%F -d "$masa days")
 exp_display=$(date -d "$masa days" +"%d-%m-%Y %H:%M:%S")
 
 # Buat akun SSH
-useradd -e $exp_system -M -N -s /sbin/nologin $username && echo "$username:$password" | chpasswd
+useradd -e "$exp_system" -M -N -s /sbin/nologin "$username" && echo "$username:$password" | chpasswd
 
 # Simpan limit ip
-echo "$limit_ip" > /etc/xray/limit/ip/ssh/$username
+echo "$limit_ip" > "/etc/xray/limit/ip/ssh/$username"
 
 # Simpan database akun
 cat > /etc/xray/database/ssh/$username.txt <<EOF

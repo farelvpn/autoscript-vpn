@@ -21,6 +21,12 @@ if [[ -z "$new_domain" ]]; then
     exit 1
 fi
 
+# Validasi format domain (cegah injeksi ke sed/certbot/nginx)
+if ! [[ "$new_domain" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    echo "Invalid domain format."
+    exit 1
+fi
+
 echo "Stopping services..."
 systemctl stop haproxy nginx xray
 
@@ -31,19 +37,18 @@ sed -i "s|${old_domain}|${new_domain}|g" /var/www/html/index.html 2>/dev/null
 
 echo "Requesting new SSL certificate..."
 dnf install socat lsof certbot -y >/dev/null 2>&1
-port=$(lsof -i:80 | awk '{print $1}')
-pkill "$port" 2>/dev/null
 
-yes Y | certbot certonly --standalone --preferred-challenges http --agree-tos --email www@risqinfstore.eu.org -d "$new_domain"
+yes Y | certbot certonly --standalone --preferred-challenges http --agree-tos --email www@${new_domain} -d "$new_domain"
 
 if [[ -f /etc/letsencrypt/live/$new_domain/fullchain.pem ]]; then
     cp /etc/letsencrypt/live/$new_domain/fullchain.pem /etc/xray/xray.crt
     cp /etc/letsencrypt/live/$new_domain/privkey.pem /etc/xray/xray.key
-    chmod 644 /etc/xray/xray.key
+    chmod 600 /etc/xray/xray.key
     chmod 644 /etc/xray/xray.crt
     
     # Update HAProxy certificate
     cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/haproxy.pem > /dev/null
+    chmod 600 /etc/haproxy/haproxy.pem
     
     echo "SSL Certificate updated successfully."
 else

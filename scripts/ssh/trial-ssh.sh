@@ -10,8 +10,8 @@
 # Repository: https://github.com/risqinf/autoscript
 # ========================================================
 
-telegram_bot_token=$(cat /etc/xray/bot.key)
-telegram_chatid=$(cat /etc/xray/client.id)
+telegram_bot_token=$(cat /etc/xray/bot.key 2>/dev/null)
+telegram_chatid=$(cat /etc/xray/client.id 2>/dev/null)
 
 # Data
 domain=$(cat /etc/xray/domain)
@@ -42,6 +42,12 @@ read -p "Limit IP (angka): " limit_ip
 # validasi limit_ip hanya angka
 if ! [[ $limit_ip =~ ^[0-9]+$ ]]; then
   echo -e "\e[31m[400 Bad Request]\e[0m Limit IP harus berupa angka!"
+  exit 1
+fi
+
+# validasi format durasi: angka diikuti m/h/d (mis. 30m, 2h, 1d)
+if ! [[ "$duration" =~ ^[0-9]+[mhd]$ ]]; then
+  echo -e "\e[31m[400 Bad Request]\e[0m Format salah! gunakan angka diikuti m/h/d (mis. 30m, 2h, 1d)"
   exit 1
 fi
 

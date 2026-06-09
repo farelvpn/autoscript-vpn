@@ -14,7 +14,18 @@ clear
 
 # Direktori kerja
 backup_dir="/root"
-PASSWORD="risqinf"
+
+# Backup encryption password: read from secure store, else prompt the user.
+backup_pass_file="/etc/xray/backup.pass"
+if [[ -s "$backup_pass_file" ]]; then
+    PASSWORD=$(cat "$backup_pass_file")
+else
+    read -rsp "Enter backup encryption password: " PASSWORD; echo
+    if [[ -z "$PASSWORD" ]]; then
+        echo "Backup password cannot be empty."
+        exit 1
+    fi
+fi
 
 # Fungsi warna output
 green() { echo -e "\\033[32;1m${*}\\033[0m"; }

@@ -21,6 +21,14 @@ echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━�
 read -p "Input Username : " user
 echo "------------------------------------------------------------"
 
+# Validasi format username (cegah path traversal)
+if ! [[ "$user" =~ ^[a-zA-Z0-9_]{1,32}$ ]]; then
+    echo -e "\e[31mInvalid username format.\e[0m"
+    read -n 1 -s -r -p "Press any key to return to menu..."
+    menu
+    exit 1
+fi
+
 found=0
 
 # Check SSH

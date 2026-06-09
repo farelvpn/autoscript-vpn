@@ -67,6 +67,12 @@ delete_ssh_account() {
         return 1
     fi
 
+    # Validasi format username (cegah path traversal & injeksi argumen ke userdel)
+    if ! [[ "$username" =~ ^[a-zA-Z0-9_]{3,32}$ ]]; then
+        echo "{\"status\": \"false\", \"code\": 400, \"message\": \"Invalid username format\"}"
+        return 1
+    fi
+
     # Cek apakah user ada di database
     if [[ ! -f "$DB_PATH/$username.txt" ]]; then
         echo "{\"status\": \"false\", \"code\": 404, \"message\": \"User '$username' does not exist in database\"}"

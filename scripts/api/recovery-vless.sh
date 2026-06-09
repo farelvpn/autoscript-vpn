@@ -21,6 +21,11 @@ if [[ -z "$username" || "$username" == "null" ]]; then
     exit 1
 fi
 
+if ! [[ "$username" =~ ^[a-zA-Z0-9_]{1,32}$ ]]; then
+    echo '{"status":false,"code":400,"message":"Invalid username format"}'
+    exit 1
+fi
+
 recovery_file="/etc/xray/recovery/vless/${username}.txt"
 
 # === Cek apakah file recovery ada ===

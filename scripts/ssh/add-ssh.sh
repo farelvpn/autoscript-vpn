@@ -10,8 +10,8 @@
 # Repository: https://github.com/risqinf/autoscript
 # ========================================================
 
-telegram_bot_token=$(cat /etc/xray/bot.key)
-telegram_chatid=$(cat /etc/xray/client.id)
+telegram_bot_token=$(cat /etc/xray/bot.key 2>/dev/null)
+telegram_chatid=$(cat /etc/xray/client.id 2>/dev/null)
 
 # Data
 domain=$(cat /etc/xray/domain)
@@ -41,9 +41,27 @@ echo -e "———————————————————"
 echo -e " Create SSH Account "
 echo -e "———————————————————"
 read -p "Input Username : " username
+
+# Validasi username: hanya huruf, angka, underscore (3-32 char). Cegah path traversal & injeksi.
+if ! [[ "$username" =~ ^[a-zA-Z0-9_]{3,32}$ ]]; then
+  echo -e "\e[31m[400 Bad Request]\e[0m Username hanya boleh huruf, angka, underscore (3-32 karakter)!"
+  exit 1
+fi
 cek_username "$username"
 read -p "Input Password : " password
+
+# Validasi password: tidak boleh kosong, tanpa karakter kontrol/spasi (cegah injeksi chpasswd)
+if [[ -z "$password" ]] || [[ "$password" == *[$'\n\r\t:']* ]]; then
+  echo -e "\e[31m[400 Bad Request]\e[0m Password tidak boleh kosong atau mengandung spasi/tab/newline/titik dua!"
+  exit 1
+fi
 read -p "Expired (hari) : " masa
+
+# Validasi masa hanya angka (1-3650 hari)
+if ! [[ "$masa" =~ ^[0-9]+$ ]] || [[ "$masa" -lt 1 ]] || [[ "$masa" -gt 3650 ]]; then
+  echo -e "\e[31m[400 Bad Request]\e[0m Expired harus angka 1-3650 hari!"
+  exit 1
+fi
 read -p "Limit IP (angka): " limit_ip
 
 # validasi limit_ip hanya angka

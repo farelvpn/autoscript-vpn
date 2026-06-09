@@ -331,6 +331,48 @@ clear
 cd /root
 rm -fr dropbear*
 
+# Install SSH-over-WebSocket proxy (nginx -> 127.0.0.1:8888 -> SSH backend)
+sshws_install_logic() {
+    print_info "Installing SSH-WebSocket proxy..."
+    # Fetch the proxy from the repo (raw); fall back to the release tarball copy.
+    if wget -qO /usr/local/bin/ssh-ws.py \
+        "https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_BRANCH}/files/ssh-ws.py"; then
+        :
+    fi
+    if [[ ! -s /usr/local/bin/ssh-ws.py ]]; then
+        print_error "Failed to download ssh-ws proxy."
+        return 1
+    fi
+    chmod +x /usr/local/bin/ssh-ws.py
+
+    cat > /etc/systemd/system/ssh-ws.service <<EOF
+[Unit]
+Description=SSH WebSocket Proxy by risqinf
+After=network.target dropbear.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/ssh-ws.py 0.0.0.0 8888 127.0.0.1 109
+Restart=always
+RestartSec=3
+LimitNOFILE=1000000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable ssh-ws --now >/dev/null 2>&1
+    check_service ssh-ws
+    print_success "SSH-WebSocket proxy running on port 8888 (-> SSH 109)."
+}
+
+if systemctl is-active ssh-ws &>/dev/null; then
+    print_success "SSH-WebSocket proxy already running."
+else
+    sshws_install_logic
+fi
+
 # Install Xray
 xray_install_logic() {
     print_info "Synchronizing Xray-core release 25.10.15..."

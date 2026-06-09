@@ -60,6 +60,26 @@ valid_domain()   { [[ "$1" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; }
 gen_uuid() { cat /proc/sys/kernel/random/uuid; }
 gen_pass() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-10}"; }
 
+# Resolve the nologin shell path and ensure it is registered in /etc/shells.
+# On Rocky Linux 9 the binary is /usr/sbin/nologin (with /sbin -> /usr/sbin).
+# PAM's pam_shells rejects logins whose shell is not listed in /etc/shells,
+# which surfaces to SSH/WS clients as "incorrect username or password".
+ensure_nologin_shell() {
+  local sh=""
+  if [[ -x /usr/sbin/nologin ]]; then sh=/usr/sbin/nologin
+  elif [[ -x /sbin/nologin ]]; then sh=/sbin/nologin
+  fi
+  [[ -z "$sh" ]] && { echo ""; return 1; }
+  touch /etc/shells 2>/dev/null
+  # Register both common paths so either resolves.
+  grep -qxF "$sh" /etc/shells 2>/dev/null || echo "$sh" >> /etc/shells
+  if [[ "$sh" == /usr/sbin/nologin ]] && [[ -e /sbin/nologin ]]; then
+    grep -qxF "/sbin/nologin" /etc/shells 2>/dev/null || echo "/sbin/nologin" >> /etc/shells
+  fi
+  echo "$sh"
+  return 0
+}
+
 # --- Duration -> seconds ---
 duration_to_seconds() {
   local d="$1" v="${1%?}" u="${1: -1}"

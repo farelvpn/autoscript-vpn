@@ -23,7 +23,8 @@ exp_epoch=$(( $(date +%s) + secs ))
 exp_system=$(date -d "@${exp_epoch}" +%Y-%m-%d)
 
 if db_account_exists "ssh" "$user" || id "$user" &>/dev/null; then err_json 409 "Username collision, retry"; fi
-useradd -e "$exp_system" -M -N -s /sbin/nologin "$user" || err_json 500 "useradd failed"
+nologin=$(ensure_nologin_shell); [[ -z "$nologin" ]] && nologin=/usr/sbin/nologin
+useradd -e "$exp_system" -M -N -s "$nologin" "$user" || err_json 500 "useradd failed"
 echo "${user}:${pass}" | chpasswd || { userdel --force "$user" >/dev/null 2>&1; err_json 500 "chpasswd failed"; }
 db_insert_account "ssh" "$user" "$pass" 0 "$limit_ip" "$exp_epoch"
 db_audit "create" "ssh" "$user" "trial api ${duration}"

@@ -145,6 +145,16 @@ systemctl daemon-reload
 systemctl restart sshd
 print_success "SSH Hardening complete (Port 22, 3303)."
 
+# Register the nologin shell so PAM (pam_shells) accepts tunneling accounts.
+# Without this, SSH/WS logins fail with "incorrect username or password"
+# even when credentials are correct.
+print_info "Registering nologin shell in /etc/shells..."
+touch /etc/shells
+for s in /usr/sbin/nologin /sbin/nologin /bin/false; do
+    [[ -e "$s" ]] && { grep -qxF "$s" /etc/shells || echo "$s" >> /etc/shells; }
+done
+print_success "nologin shell registered."
+
 # Make A Directory
 print_info "Preparing system directories..."
 mkdir -p /etc/xray/limit/ip/{ssh,vless,trojan,vmess}

@@ -45,7 +45,8 @@ exp_system=$(date -d "@${new_epoch}" +%Y-%m-%d)
 if id "$user" &>/dev/null; then
   chage -E "$exp_system" "$user" 2>/dev/null
 else
-  useradd -e "$exp_system" -M -N -s /sbin/nologin "$user" || { err "useradd failed"; read -n1 -s -r -p "Press any key..."; menu; exit 1; }
+  nologin=$(ensure_nologin_shell); [[ -z "$nologin" ]] && nologin=/usr/sbin/nologin
+  useradd -e "$exp_system" -M -N -s "$nologin" "$user" || { err "useradd failed"; read -n1 -s -r -p "Press any key..."; menu; exit 1; }
   echo "${user}:${pass}" | chpasswd
 fi
 

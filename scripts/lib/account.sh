@@ -89,7 +89,9 @@ acc_ssh_create() {
   if db_account_exists "ssh" "$user" || id "$user" &>/dev/null; then
     err "username '$user' already exists"; return 9
   fi
-  useradd -e "$exp_system" -M -N -s /sbin/nologin "$user" || { err "useradd failed"; return 1; }
+  local nologin
+  nologin=$(ensure_nologin_shell); [[ -z "$nologin" ]] && nologin=/usr/sbin/nologin
+  useradd -e "$exp_system" -M -N -s "$nologin" "$user" || { err "useradd failed"; return 1; }
   echo "${user}:${pass}" | chpasswd || { userdel --force "$user" >/dev/null 2>&1; err "chpasswd failed"; return 1; }
   db_insert_account "ssh" "$user" "$pass" 0 "$limit_ip" "$exp_epoch"
   db_audit "create" "ssh" "$user" "ip=${limit_ip} days=${days}"

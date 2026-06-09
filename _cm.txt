@@ -1,13 +1,13 @@
-Fix SSH login failure: register nologin shell in /etc/shells
+Fix Dropbear logging on Rocky Linux 9 (syslog -> /var/log/secure)
 
-SSH/WS tunneling accounts were created with /sbin/nologin, but that shell is
-not listed in /etc/shells on Rocky Linux 9. PAM's pam_shells then rejects the
-login, surfacing to clients as "incorrect username or password" even with
-correct credentials.
+Dropbear ran with -E (log to stderr/journald only), so logins never reached
+/var/log/secure. On Rocky 9 minimal there is also no rsyslog by default, so
+the only way to read logs was 'journalctl -t dropbear', and the IP-limit /
+login-checker scripts and the ssh-ws auth-log monitor (which read
+/var/log/secure) got no data.
 
-- common.sh: add ensure_nologin_shell() that resolves /usr/sbin/nologin
-  (EL9 path) and registers it (and /sbin/nologin) in /etc/shells.
-- account.sh, ssh/trial-ssh, ssh/recovery-ssh, api/trial-ssh: use the
-  resolved nologin path instead of hardcoded /sbin/nologin.
-- install.sh: register /usr/sbin/nologin, /sbin/nologin, /bin/false in
-  /etc/shells during setup, before any account creation.
+- install.sh: install + enable rsyslog and add authpriv.* -> /var/log/secure
+  (00-autoscript-secure.conf) before component install.
+- dropbear.service: drop -E so Dropbear logs via syslog (authpriv); keep -F
+  for systemd Type=simple; order After=rsyslog.service.
+- uninstall.sh: remove the custom rsyslog drop-in.

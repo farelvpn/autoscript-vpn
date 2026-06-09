@@ -155,6 +155,19 @@ for s in /usr/sbin/nologin /sbin/nologin /bin/false; do
 done
 print_success "nologin shell registered."
 
+# Ensure rsyslog writes authpriv (SSH/Dropbear logins) to /var/log/secure.
+# Rocky Linux 9 minimal ships journald-only; without rsyslog the IP-limit and
+# login-checker scripts (which read /var/log/secure) and the ssh-ws auth-log
+# monitor get no data. Dropbear logs via syslog (authpriv) once -E is dropped.
+print_info "Configuring rsyslog for /var/log/secure..."
+dnf install rsyslog -y >/dev/null 2>&1
+if ! grep -rqs 'authpriv\.\*' /etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null; then
+    echo 'authpriv.*    /var/log/secure' > /etc/rsyslog.d/00-autoscript-secure.conf
+fi
+systemctl enable rsyslog --now >/dev/null 2>&1
+systemctl restart rsyslog >/dev/null 2>&1
+print_success "rsyslog active (authpriv -> /var/log/secure)."
+
 # Make A Directory
 print_info "Preparing system directories..."
 mkdir -p /etc/xray/limit/ip/{ssh,vless,trojan,vmess}
@@ -308,11 +321,13 @@ dropbear_install_logic() {
     cat >/etc/systemd/system/dropbear.service <<'EOF'
 [Unit]
 Description=Dropbear SSH Server
-After=network.target
+After=network.target rsyslog.service
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/dropbear -E -F -p 109 -b /etc/issue.net -r /etc/dropbear/dropbear_rsa_host_key -W 65536
+# No -E: log via syslog (authpriv) so logins reach /var/log/secure.
+# -F keeps it in the foreground for systemd Type=simple.
+ExecStart=/usr/sbin/dropbear -F -p 109 -b /etc/issue.net -r /etc/dropbear/dropbear_rsa_host_key -W 65536
 Restart=always
 
 [Install]

@@ -331,30 +331,77 @@ clear
 cd /root
 rm -fr dropbear*
 
-# Install SSH-over-WebSocket proxy (nginx -> 127.0.0.1:8888 -> SSH backend)
+# Install SSH-over-WebSocket proxy: GO-TUNNEL PRO (risqinf/websocket-proxy)
+# Static Go binary (CGO_ENABLED=0) — runs natively on Rocky Linux 9.
+# Tuned for EL9: auth log = /var/log/secure (not Debian's /var/log/auth.log),
+# runs as root (EL9 has no 'adm' group on /var/log/secure).
+SSHWS_VERSION="v1.3.0"
 sshws_install_logic() {
-    print_info "Installing SSH-WebSocket proxy..."
-    # Fetch the proxy from the repo (raw); fall back to the release tarball copy.
-    if wget -qO /usr/local/bin/ssh-ws.py \
-        "https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_BRANCH}/files/ssh-ws.py"; then
-        :
-    fi
-    if [[ ! -s /usr/local/bin/ssh-ws.py ]]; then
-        print_error "Failed to download ssh-ws proxy."
-        return 1
-    fi
-    chmod +x /usr/local/bin/ssh-ws.py
+    print_info "Installing SSH-WebSocket proxy (GO-TUNNEL PRO ${SSHWS_VERSION})..."
 
-    cat > /etc/systemd/system/ssh-ws.service <<EOF
+    # Detect architecture -> release asset suffix.
+    local arch asset
+    case "$(uname -m)" in
+        x86_64)  arch="linux-amd64" ;;
+        aarch64) arch="linux-arm64" ;;
+        armv7l)  arch="linux-armv7" ;;
+        *) print_error "Unsupported architecture: $(uname -m)"; return 1 ;;
+    esac
+    asset="ssh-ws-${SSHWS_VERSION}-${arch}.tar.gz"
+
+    local base="https://github.com/risqinf/websocket-proxy/releases/download/${SSHWS_VERSION}"
+    local tmp; tmp="$(mktemp -d)"
+
+    if ! wget -qO "${tmp}/ssh-ws.tar.gz" "${base}/${asset}"; then
+        print_error "Failed to download ${asset}."
+        rm -rf "$tmp"; return 1
+    fi
+
+    # Verify checksum against the release checksums.txt (best effort).
+    if wget -qO "${tmp}/checksums.txt" "${base}/checksums.txt"; then
+        local want got
+        want=$(grep -E "  ?${asset}\$" "${tmp}/checksums.txt" | awk '{print $1}')
+        got=$(sha256sum "${tmp}/ssh-ws.tar.gz" | awk '{print $1}')
+        if [[ -n "$want" && "$want" != "$got" ]]; then
+            print_error "Checksum mismatch for ${asset}. Aborting ssh-ws install."
+            rm -rf "$tmp"; return 1
+        fi
+        [[ -n "$want" ]] && print_success "ssh-ws checksum verified."
+    fi
+
+    tar -xzf "${tmp}/ssh-ws.tar.gz" -C "$tmp" >/dev/null 2>&1
+    # The archive contains a binary named like ssh-ws-<ver>-<arch>
+    # (plus a .sha256 sidecar we must not pick).
+    local bin
+    bin=$(find "$tmp" -maxdepth 1 -type f -name 'ssh-ws-*' \
+          ! -name '*.tar.gz' ! -name '*.sha256' | head -1)
+    if [[ -z "$bin" ]]; then
+        # Fallback: some archives may use a plain 'ssh-ws' name.
+        bin=$(find "$tmp" -maxdepth 1 -type f -name 'ssh-ws' | head -1)
+    fi
+    if [[ -z "$bin" ]]; then
+        print_error "ssh-ws binary not found in archive."
+        rm -rf "$tmp"; return 1
+    fi
+    install -m 0755 "$bin" /usr/local/bin/ssh-ws
+    rm -rf "$tmp"
+
+    # Generate a random per-connection password (optional; clients send X-Pass).
+    # Leave auth disabled by default so existing client configs keep working;
+    # the proxy is only reachable via nginx/HAProxy on the public TLS port.
+    cat > /etc/systemd/system/ssh-ws.service <<'EOF'
 [Unit]
-Description=SSH WebSocket Proxy by risqinf
+Description=GO-TUNNEL PRO SSH WebSocket Proxy
 After=network.target dropbear.service
+Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/local/bin/ssh-ws.py 0.0.0.0 8888 127.0.0.1 109
+User=root
+ExecStart=/usr/local/bin/ssh-ws -b 0.0.0.0 -p 8888 -t 127.0.0.1:109 \
+  -l /var/log/ssh-ws.log --auth-log /var/log/secure --api-port 8081
 Restart=always
-RestartSec=3
+RestartSec=5
 LimitNOFILE=1000000
 
 [Install]
@@ -364,7 +411,7 @@ EOF
     systemctl daemon-reload
     systemctl enable ssh-ws --now >/dev/null 2>&1
     check_service ssh-ws
-    print_success "SSH-WebSocket proxy running on port 8888 (-> SSH 109)."
+    print_success "SSH-WebSocket proxy running on port 8888 (-> SSH 109); UDPGW on 7300; API on 127.0.0.1:8081."
 }
 
 if systemctl is-active ssh-ws &>/dev/null; then

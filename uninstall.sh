@@ -40,7 +40,8 @@ rm -f /usr/local/bin/xray
 rm -f /usr/local/bin/proxy
 rm -f /usr/local/bin/badvpn
 rm -f /usr/local/bin/server
-rm -f /usr/local/bin/ssh-ws.py
+rm -f /usr/local/bin/ssh-ws
+rm -f /var/log/ssh-ws.log
 rm -f /etc/systemd/system/xray.service
 rm -f /etc/systemd/system/ssh-ws.service
 rm -f /etc/systemd/system/badvpn.service

@@ -73,6 +73,16 @@ automatically by `db-migrate` during install.
 > The RESTful API server in `files/` is being rebuilt (C++ or Rust) and is
 > not yet shipped.
 
+## SSH WebSocket
+
+SSH-over-WebSocket is provided by **GO-TUNNEL PRO**
+([risqinf/websocket-proxy](https://github.com/risqinf/websocket-proxy)) — a
+static Go binary installed as `/usr/local/bin/ssh-ws` with the `ssh-ws`
+systemd service. On Rocky Linux 9 it is tuned to read `/var/log/secure`
+(instead of Debian's `/var/log/auth.log`) and runs as root. It listens on
+`127.0.0.1`-reachable port `8888` (fronted by nginx/HAProxy on 80/443),
+provides UDPGW on `7300`, and a localhost monitoring API on `8081`.
+
 ## Uninstall
 
 ```shell

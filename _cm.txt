@@ -1,13 +1,19 @@
-Fix Dropbear logging on Rocky Linux 9 (syslog -> /var/log/secure)
+SSH monitor: correlate ssh-ws bandwidth to username via proxy-port
 
-Dropbear ran with -E (log to stderr/journald only), so logins never reached
-/var/log/secure. On Rocky 9 minimal there is also no rsyslog by default, so
-the only way to read logs was 'journalctl -t dropbear', and the IP-limit /
-login-checker scripts and the ssh-ws auth-log monitor (which read
-/var/log/secure) got no data.
+Join the ssh-ws.log session data with /var/log/secure on the proxy-port to
+attribute live bandwidth and the real client IP to each SSH username:
+  ssh-ws.log [CONNECT]  -> sessionID, client IP, proxy-port
+  ssh-ws.log [MONITOR]  -> live TX/RX/Total/uptime per session
+  /var/log/secure       -> proxy-port -> username
+  ss                    -> proxy-ports currently connected to dropbear:109
 
-- install.sh: install + enable rsyslog and add authpriv.* -> /var/log/secure
-  (00-autoscript-secure.conf) before component install.
-- dropbear.service: drop -E so Dropbear logs via syslog (authpriv); keep -F
-  for systemd Type=simple; order After=rsyslog.service.
-- uninstall.sh: remove the custom rsyslog drop-in.
+- cek-ssh: rewritten with a clean table UI showing username, client IP,
+  uptime, TX, RX, Total per live session, plus a per-user sessions-vs-limit
+  summary and total live count.
+- limit-ip-ssh: count only currently-live distinct client IPs per user
+  (via ss + proxy-port correlation) instead of all-time log lines, so old
+  logins no longer cause false kicks.
+- fixlog: also truncate /var/log/ssh-ws.log.
+
+Verified correlation against real sample (port 48098 -> farell ->
+TX 33.9 KB / RX 63.9 KB / Total 97.8 KB).

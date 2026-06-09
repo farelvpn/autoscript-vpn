@@ -1,5 +1,7 @@
 # Autoscript VPN
 
+> Version: **0.1.0-beta** — see [CHANGELOG.md](CHANGELOG.md).
+
 AutoScript VPN & Tunneling Management System, developed for **Rocky Linux 9**.
 
 Supports SSH, VLESS, VMESS, Trojan, and OpenVPN with WebSocket (WS), TLS, and HAProxy, plus a Web API for account management.

@@ -247,28 +247,6 @@ mdns() {
     esac
 }
 
-# --- Function: Install Ads Block ---
-ins_hel() {
-    red='\e[1;31m'
-    green='\e[0;32m'
-    purple='\e[0;35m'
-    orange='\e[0;33m'
-    NC='\e[0m'
-    clear
-    if [[ -e /usr/local/sbin/helium ]]; then
-         echo ""
-         echo -e "${green}Ads Block Already Install${NC}"
-         echo ""
-         read -n1 -r -p "Press any key to continue..."
-         menu
-    else
-        rm -rf /usr/local/sbin/helium
-        wget -q -O /usr/local/sbin/helium https://raw.githubusercontent.com/risqinf/autoscript/main/scripts/system/helium.sh
-        chmod +x /usr/local/sbin/helium
-        helium
-    fi
-}
-
 # --- Function: Clear RAM Cache ---
 run_cc() {
     sync
@@ -398,18 +376,18 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 printf "${LIGHT}%-12s : SSH(${GREEN}%s${NC}) | VLESS(${GREEN}%s${NC}) | VMESS(${GREEN}%s${NC}) | TROJAN(${GREEN}%s${NC})\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
 printf "${LIGHT}%-12s : DBear ($ressh) | OVPN ($resovpn) | Nginx ($resngx) | Xray ($resv2r)\n" "Services"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e " 1)  SSH Panel         7)  Xray Core          13) API Menu"
-echo -e " 2)  VLESS Panel       8)  Clean Data         14) Auto Bulk"
-echo -e " 3)  TROJAN Panel      9)  Stream Check       15) User Checker"
-echo -e " 4)  VMESS Panel      10)  Speedtest          16) Change Domain"
-echo -e " 5)  SSL & Cert       11)  Change DNS         17) Timezone"
-echo -e " 6)  Backup/Restore   12)  Ads Block          18) Uninstall"
+echo -e " 1)  SSH Panel         7)  Xray Core          13) Auto Bulk"
+echo -e " 2)  VLESS Panel       8)  Clean Data         14) User Checker"
+echo -e " 3)  TROJAN Panel      9)  Stream Check       15) Change Domain"
+echo -e " 4)  VMESS Panel      10)  Speedtest          16) Timezone"
+echo -e " 5)  SSL & Cert       11)  Change DNS         17) Uninstall"
+echo -e " 6)  Backup/Restore   12)  API Menu"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 printf "${LIGHT}XRAY Version : [ ${GREEN}%s ${LIGHT}]\n" "$xray_version"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # --- MENU SELECTION ---
-read -p " Select Option [1-18]: " mm
+read -p " Select Option [1-17]: " mm
 case $mm in
 1) clear ; run_cc ; menu-ssh ;;
 2) clear ; run_cc ; menu-vless ;;
@@ -422,13 +400,12 @@ case $mm in
 9) clear ; run_cc ; stream-check ;;
 10) clear ; run_cc ; echo -e "YES" | speedtest ;;
 11) clear ; run_cc ; mdns ;;
-12) clear ; run_cc ; ins_hel ;;
-13) clear ; run_cc ; menu-api ;;
-14) clear ; run_cc ; add-bulk ;;
-15) clear ; run_cc ; cek-user ;;
-16) clear ; run_cc ; change-domain ;;
-17) clear ; run_cc ; change-timezone ;;
-18) clear ; run_cc ; uninstall ;;
+12) clear ; run_cc ; menu-api ;;
+13) clear ; run_cc ; add-bulk ;;
+14) clear ; run_cc ; cek-user ;;
+15) clear ; run_cc ; change-domain ;;
+16) clear ; run_cc ; change-timezone ;;
+17) clear ; run_cc ; uninstall ;;
 00) clear ; run_cc ; nano /etc/issue.net ;;
 *) echo "Invalid option, please try again." ; sleep 1 ; menu ;;
 esac

@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# ========================================================
+# Project: Autoscript VPN by risqinf
+# Description: AutoScript VPN & Tunneling Management System
+# Developed for Rocky Linux 9
+# ========================================================
+# ========================================================
+# Author: risqinf
+# Script: recovery-vmess
+# Function: Restore deleted VMESS accounts (API version)
+# ========================================================
+
+domain=$(cat /etc/xray/domain 2>/dev/null)
+read input
+
+username=$(echo "$input" | jq -r '.username' 2>/dev/null)
+
+# === Validasi username ===
+if [[ -z "$username" || "$username" == "null" ]]; then
+    echo '{"status":false,"code":400,"message":"Username field is required"}'
+    exit 1
+fi
+
+recovery_file="/etc/xray/recovery/vmess/${username}.txt"
+
+# === Cek apakah file recovery ada ===
+if [[ ! -f "$recovery_file" ]]; then
+    echo '{"status":false,"code":404,"message":"No recovery data found for this username"}'
+    exit 1
+fi
+
+# === Ambil data dari file recovery ===
+uuid=$(grep "^uuid:" "$recovery_file" | cut -d' ' -f2-)
+limit_ip=$(grep "^limit_ip:" "$recovery_file" | cut -d' ' -f2-)
+quota=$(grep "^quota:" "$recovery_file" | cut -d' ' -f2-)
+expired=$(grep "^expired:" "$recovery_file" | cut -d' ' -f2-)
+
+# === Pastikan data lengkap ===
+if [[ -z "$uuid" || -z "$expired" ]]; then
+    echo '{"status":false,"code":500,"message":"Corrupted recovery file — missing UUID or expiration date"}'
+    exit 1
+fi
+
+# === Cek apakah username sudah ada ===
+if grep -q "\"email\": \"$username\"" /etc/xray/config.json; then
+    echo '{"status":false,"code":409,"message":"Username already exists in active config"}'
+    exit 1
+fi
+
+# === Buat direktori yang diperlukan ===
+mkdir -p /etc/xray/limit/quota/vmess
+mkdir -p /etc/xray/limit/ip/vmess
+mkdir -p /etc/xray/database/vmess
+mkdir -p /etc/xray/usage/quota/vmess
+
+# === Pindahkan file recovery ke database aktif ===
+mv "$recovery_file" "/etc/xray/database/vmess/${username}.txt"
+
+# === Atur quota dan limit IP ===
+if [[ "$quota" =~ ^[0-9]+$ && "$quota" -gt 0 ]]; then
+    echo $((quota * 1024 * 1024 * 1024)) > "/etc/xray/limit/quota/vmess/${username}"
+fi
+
+if [[ "$limit_ip" =~ ^[0-9]+$ && "$limit_ip" -gt 0 ]]; then
+    echo "$limit_ip" > "/etc/xray/limit/ip/vmess/${username}"
+fi
+
+# === Tambahkan user ke config.json ===
+sed -i '/#vmess$/a\### '"$username $expired"'\
+},{"id": "'"$uuid"'","alterId": 0,"email": "'"$username"'"' /etc/xray/config.json
+
+# === Restart service Xray ===
+systemctl restart xray.service
+
+# === Format quota & IP limit ===
+[[ -z "$limit_ip" || "$limit_ip" == "0" ]] && iplimit_display="Unlimited" || iplimit_display="$limit_ip"
+[[ -z "$quota" || "$quota" == "0" ]] && quota_display="Unlimited" || quota_display="${quota} GB"
+
+# === Generate link ===
+vmess_tls_json=$(echo -n "{\"v\":\"2\",\"ps\":\"${username}\",\"add\":\"${domain}\",\"port\":\"443\",\"id\":\"${uuid}\",\"aid\":\"0\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"${domain}\",\"path\":\"/vmess\",\"tls\":\"tls\"}" | base64 -w 0)
+vmess_http_json=$(echo -n "{\"v\":\"2\",\"ps\":\"${username}\",\"add\":\"${domain}\",\"port\":\"80\",\"id\":\"${uuid}\",\"aid\":\"0\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"${domain}\",\"path\":\"/vmess\",\"tls\":\"none\"}" | base64 -w 0)
+
+# === Output JSON sukses ===
+echo "{
+  \"status\": true,
+  \"code\": 200,
+  \"message\": \"VMESS account restored successfully\",
+  \"data\": {
+    \"username\": \"$username\",
+    \"uuid\": \"$uuid\",
+    \"domain\": \"$domain\",
+    \"expired\": \"$expired\",
+    \"limit_ip\": \"$limit_ip\",
+    \"quota\": \"$quota\",
+    \"links\": {
+      \"vmess_ws_tls\": \"vmess://${vmess_tls_json}\",
+      \"vmess_ws_http\": \"vmess://${vmess_http_json}\"
+    }
+  }
+}"

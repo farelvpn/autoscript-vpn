@@ -1,0 +1,8 @@
+# API Server Placeholder
+
+The RESTful API server binary/script that previously lived here has been
+intentionally removed. A new RESTful API server will be built from scratch
+and published in this directory.
+
+Until then, the `menu-api` management menu and the `server.service` systemd
+unit are installed but the API server itself is not provided.

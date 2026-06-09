@@ -229,10 +229,10 @@ else
 fi
 
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-echo -e "${GREEN}✓${NC} ${BIWhite}Config.json preserved${NC}"
-echo -e "${GREEN}✓${NC} ${BIWhite}Service configuration preserved${NC}"
-echo -e "${GREEN}✓${NC} ${BIWhite}Log files preserved${NC}"
-echo -e "${GREEN}✓${NC} ${BIWhite}Only core binary replaced${NC}"
+echo -e "${GREEN}[OK]${NC} ${BIWhite}Config.json preserved${NC}"
+echo -e "${GREEN}[OK]${NC} ${BIWhite}Service configuration preserved${NC}"
+echo -e "${GREEN}[OK]${NC} ${BIWhite}Log files preserved${NC}"
+echo -e "${GREEN}[OK]${NC} ${BIWhite}Only core binary replaced${NC}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
 
 read -n 1 -s -r -p "Press any key to return to menu..."

@@ -128,7 +128,7 @@ for user in "${users[@]}"; do
 
         # Auto kick jika login > limit
         if [[ "$limit" != "∞" && $login_count -gt $limit ]]; then
-            echo -e "\e[31m[⚠] Peringatan:\e[0m User '\e[33m$user\e[0m' melebihi limit."
+            echo -e "\e[31m[[WARN]] Peringatan:\e[0m User '\e[33m$user\e[0m' melebihi limit."
             echo -e "\e[31m     Login Aktif : $login_count (Limit: $limit)\e[0m"
             echo -e "\e[31m     → User akan dikick dari sistem.\e[0m"
             echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
@@ -150,6 +150,6 @@ echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━�
 
 # Kirim notifikasi Telegram jika ada pelanggaran dan file konfigurasi tersedia
 if [[ -n "$violations" ]]; then
-    telegram_msg="🚨 *SSH Limit Violation Detected!*\n\nUser yang melebihi batas login:\n$violations\nServer: \`$(hostname)\`\nWaktu: \`$(date '+%Y-%m-%d %H:%M:%S')\`"
+    telegram_msg="[ALERT] *SSH Limit Violation Detected!*\n\nUser yang melebihi batas login:\n$violations\nServer: \`$(hostname)\`\nWaktu: \`$(date '+%Y-%m-%d %H:%M:%S')\`"
     send_telegram "$telegram_msg" &
 fi

@@ -39,7 +39,7 @@ generate() {
   systemctl restart server.service
   mds=$(cat /etc/api/key)
   clear
-  echo -e "${GREEN}${BOLD}✔ Success Generate New Key${NC}"
+  echo -e "${GREEN}${BOLD}[OK] Success Generate New Key${NC}"
   echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${YELLOW}Your API Token:${NC}"
   echo -e "${BOLD}$newkey${NC}"
@@ -60,7 +60,7 @@ manual() {
   systemctl restart server.service
   mds=$(cat /etc/api/key)
   clear
-  echo -e "${GREEN}${BOLD}✔ Success Add New Key API${NC}"
+  echo -e "${GREEN}${BOLD}[OK] Success Add New Key API${NC}"
   echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${YELLOW}Your API Token:${NC}"
   echo -e "${BOLD}$mds${NC}"
@@ -80,7 +80,7 @@ enable() {
   systemctl start server.service
   systemctl restart server.service
   clear
-  echo -e "${GREEN}${BOLD}✔ Done Enable API${NC}"
+  echo -e "${GREEN}${BOLD}[OK] Done Enable API${NC}"
   read -n 1 -s -r -p "Press any key to return to menu..."
 }
 
@@ -91,7 +91,7 @@ restart() {
   systemctl start server.service
   systemctl restart server.service
   clear
-  echo -e "${GREEN}${BOLD}✔ Done Restarting API${NC}"
+  echo -e "${GREEN}${BOLD}[OK] Done Restarting API${NC}"
   read -n 1 -s -r -p "Press any key to return to menu..."
 }
 
@@ -100,7 +100,7 @@ disable() {
   systemctl stop server.service
   systemctl disable server.service
   clear
-  echo -e "${RED}${BOLD}✖ Success Disable API${NC}"
+  echo -e "${RED}${BOLD}[X] Success Disable API${NC}"
   read -n 1 -s -r -p "Press any key to return to menu..."
 }
 

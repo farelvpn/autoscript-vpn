@@ -50,12 +50,12 @@ validate_config_files() {
     # Cek file bot token
     if [[ ! -f "$bot_token_file" ]] || [[ ! -s "$bot_token_file" ]]; then
         missing_files+=("Bot Token")
-        echo -e "$(red "❌ File bot token tidak ditemukan atau kosong: $bot_token_file")"
+        echo -e "$(red "[X] File bot token tidak ditemukan atau kosong: $bot_token_file")"
     else
         botToken=$(cat "$bot_token_file")
         # Validasi format bot token (harus mengandung angka dan huruf)
         if ! echo "$botToken" | grep -qE '[0-9]+:[a-zA-Z0-9_-]+'; then
-            echo -e "$(red "❌ Format bot token tidak valid")"
+            echo -e "$(red "[X] Format bot token tidak valid")"
             missing_files+=("Bot Token")
         fi
     fi
@@ -63,19 +63,19 @@ validate_config_files() {
     # Cek file chat ID
     if [[ ! -f "$chat_id_file" ]] || [[ ! -s "$chat_id_file" ]]; then
         missing_files+=("Chat ID")
-        echo -e "$(red "❌ File chat ID tidak ditemukan atau kosong: $chat_id_file")"
+        echo -e "$(red "[X] File chat ID tidak ditemukan atau kosong: $chat_id_file")"
     else
         chatId=$(cat "$chat_id_file")
         # Validasi format chat ID (harus angka)
         if ! echo "$chatId" | grep -qE '^-?[0-9]+$'; then
-            echo -e "$(red "❌ Format chat ID tidak valid")"
+            echo -e "$(red "[X] Format chat ID tidak valid")"
             missing_files+=("Chat ID")
         fi
     fi
     
     # Jika ada file yang missing, minta input dari user
     if [[ ${#missing_files[@]} -gt 0 ]]; then
-        echo -e "\n$(yellow "⚠️  File konfigurasi berikut tidak ditemukan atau kosong:")"
+        echo -e "\n$(yellow "[WARN]  File konfigurasi berikut tidak ditemukan atau kosong:")"
         printf '%s\n' "${missing_files[@]}"
         echo -e "\n$(yellow "Silakan isi informasi berikut:")"
         
@@ -89,9 +89,9 @@ validate_config_files() {
                         mkdir -p "/etc/xray"
                         echo "$botToken" > "$bot_token_file"
                         chmod 600 "$bot_token_file"
-                        echo -e "$(green "✅ Bot Token disimpan ke $bot_token_file")"
+                        echo -e "$(green "[OK] Bot Token disimpan ke $bot_token_file")"
                     else
-                        echo -e "$(red "❌ Bot Token tidak boleh kosong!")"
+                        echo -e "$(red "[X] Bot Token tidak boleh kosong!")"
                         exit 1
                     fi
                     ;;
@@ -103,9 +103,9 @@ validate_config_files() {
                         mkdir -p "/etc/xray"
                         echo "$chatId" > "$chat_id_file"
                         chmod 600 "$chat_id_file"
-                        echo -e "$(green "✅ Chat ID disimpan ke $chat_id_file")"
+                        echo -e "$(green "[OK] Chat ID disimpan ke $chat_id_file")"
                     else
-                        echo -e "$(red "❌ Chat ID tidak boleh kosong!")"
+                        echo -e "$(red "[X] Chat ID tidak boleh kosong!")"
                         exit 1
                     fi
                     ;;
@@ -115,7 +115,7 @@ validate_config_files() {
         # Jika file ada dan valid, baca nilainya
         botToken=$(cat "$bot_token_file")
         chatId=$(cat "$chat_id_file")
-        echo -e "$(green "✅ File konfigurasi ditemukan dan valid")"
+        echo -e "$(green "[OK] File konfigurasi ditemukan dan valid")"
     fi
 }
 
@@ -127,10 +127,10 @@ test_telegram_connection() {
     local status_code="${response: -3}"
     
     if [[ "$status_code" == "200" ]]; then
-        echo -e "$(green "✅ Koneksi Telegram berhasil")"
+        echo -e "$(green "[OK] Koneksi Telegram berhasil")"
         return 0
     else
-        echo -e "$(red "❌ Gagal terhubung ke Telegram. Status code: $status_code")"
+        echo -e "$(red "[X] Gagal terhubung ke Telegram. Status code: $status_code")"
         echo -e "$(yellow "Periksa kembali Bot Token dan pastikan bot sudah aktif.")"
         return 1
     fi
@@ -148,7 +148,7 @@ send_file_to_telegram() {
     local max_size=$((50 * 1024 * 1024))  # 50MB batas maksimal Telegram
     
     if [[ $file_size -gt $max_size ]]; then
-        echo -e "$(red "❌ File terlalu besar ($((file_size/1024/1024))MB). Batas maksimal Telegram adalah 50MB.")"
+        echo -e "$(red "[X] File terlalu besar ($((file_size/1024/1024))MB). Batas maksimal Telegram adalah 50MB.")"
         return 1
     fi
     
@@ -162,10 +162,10 @@ send_file_to_telegram() {
     
     # Cek apakah pengiriman berhasil
     if echo "$response" | grep -q '"ok":true'; then
-        echo -e "$(green "✅ File berhasil dikirim ke Telegram")"
+        echo -e "$(green "[OK] File berhasil dikirim ke Telegram")"
         return 0
     else
-        echo -e "$(red "❌ Gagal mengirim file ke Telegram")"
+        echo -e "$(red "[X] Gagal mengirim file ke Telegram")"
         echo -e "$(yellow "Response: $response")"
         return 1
     fi
@@ -211,36 +211,36 @@ if [[ ! -f "$zip_file" ]]; then
 fi
 
 # Buat caption untuk Telegram
-caption="✅ *Backup Berhasil!*
+caption="[OK] *Backup Berhasil!*
 
-📁 *File Backup:* \`$(basename "$zip_file")\`
+ *File Backup:* \`$(basename "$zip_file")\`
 
-🖥 *Informasi Server:*
-┣ 📛 **Nama Pengguna:** $USERNAME
-┣ 🌐 **Domain:** $domain
-┣ 🏢 **ISP:** $asn_info
-┣ 🌍 **IP VPS:** \`$ipsaya\`
+ *Informasi Server:*
+┣  **Nama Pengguna:** $USERNAME
+┣  **Domain:** $domain
+┣  **ISP:** $asn_info
+┣  **IP VPS:** \`$ipsaya\`
 ┣ ⏰ **Waktu Backup:** $tanggal pukul $waktu
-┣ 🔑 **Kode Unik:** $random_code
-┣ 🔒 **Password:** \`$PASSWORD\`
+┣  **Kode Unik:** $random_code
+┣  **Password:** \`$PASSWORD\`
 ┗━━━━━━━━━━━━━━━━━
 
-📊 *Detail Backup:*
-┣ 📅 **Tanggal:** $tanggal
-┣ 🕐 **Waktu:** $waktu
-┣ 🆔 **Kode Unik:** $random_code
-┗ 🔐 **Password:** $PASSWORD
+ *Detail Backup:*
+┣  **Tanggal:** $tanggal
+┣  **Waktu:** $waktu
+┣  **Kode Unik:** $random_code
+┗  **Password:** $PASSWORD
 
-🔒 *Keamanan: File backup dilindungi dengan password.*  
-🔄 *Proses backup ini dilakukan secara otomatis untuk menjaga data Anda tetap aman.*
+ *Keamanan: File backup dilindungi dengan password.*  
+ *Proses backup ini dilakukan secara otomatis untuk menjaga data Anda tetap aman.*
 
-✨ *Terima kasih telah menggunakan layanan kami!*"
+ *Terima kasih telah menggunakan layanan kami!*"
 
 # Kirim file langsung ke Telegram
 if send_file_to_telegram "$zip_file" "$caption"; then
-    echo -e "$(green "✅ Backup berhasil dikirim ke Telegram")"
+    echo -e "$(green "[OK] Backup berhasil dikirim ke Telegram")"
 else
-    echo -e "$(red "❌ Gagal mengirim backup ke Telegram")"
+    echo -e "$(red "[X] Gagal mengirim backup ke Telegram")"
     # Tampilkan informasi meskipun gagal kirim
 fi
 
@@ -248,26 +248,26 @@ fi
 clear
 echo -e "\n$(green "Backup selesai.")"
 echo -e "$(green "Detail Backup:")"
-echo -e "📁 File Backup: $(basename "$zip_file")"
-echo -e "🖥 Informasi Server:"
-echo -e "┣ 📛 Nama Pengguna: $USERNAME"
-echo -e "┣ 🌐 Domain: $domain"
-echo -e "┣ 🏢 ISP: $asn_info"
-echo -e "┣ 🌍 IP VPS: $ipsaya"
+echo -e " File Backup: $(basename "$zip_file")"
+echo -e " Informasi Server:"
+echo -e "┣  Nama Pengguna: $USERNAME"
+echo -e "┣  Domain: $domain"
+echo -e "┣  ISP: $asn_info"
+echo -e "┣  IP VPS: $ipsaya"
 echo -e "┣ ⏰ Waktu Backup: $tanggal pukul $waktu"
-echo -e "┣ 🔑 Kode Unik: $random_code"
-echo -e "┣ 🔒 Password: $PASSWORD"
+echo -e "┣  Kode Unik: $random_code"
+echo -e "┣  Password: $PASSWORD"
 echo -e "┗━━━━━━━━━━━━━━━━━"
-echo -e "📊 Detail Backup:"
-echo -e "┣ 📅 Tanggal: $tanggal"
-echo -e "┣ 🕐 Waktu: $waktu"
-echo -e "┣ 🆔 Kode Unik: $random_code"
-echo -e "┗ 🔐 Password: $PASSWORD"
-echo -e "🔒 Keamanan: File backup dilindungi dengan password."
-echo -e "🔄 Proses backup ini dilakukan secara otomatis untuk menjaga data Anda tetap aman."
+echo -e " Detail Backup:"
+echo -e "┣  Tanggal: $tanggal"
+echo -e "┣  Waktu: $waktu"
+echo -e "┣  Kode Unik: $random_code"
+echo -e "┗  Password: $PASSWORD"
+echo -e " Keamanan: File backup dilindungi dengan password."
+echo -e " Proses backup ini dilakukan secara otomatis untuk menjaga data Anda tetap aman."
 
 # Bersihkan file temporary
 rm -f "$zip_file"
 rm -rf "$backup_dir"
 
-echo -e "\n$(green "✅ Proses backup selesai!")"
+echo -e "\n$(green "[OK] Proses backup selesai!")"

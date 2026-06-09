@@ -29,6 +29,24 @@ print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Verify a service is active after enable/start. Usage: check_service <name> [fatal]
+# If the second arg is "fatal", abort installation when the service is not active.
+check_service() {
+    local svc="$1"
+    local fatal="${2:-}"
+    if systemctl is-active --quiet "$svc"; then
+        print_success "Service '$svc' is active."
+        return 0
+    fi
+    print_error "Service '$svc' failed to start."
+    systemctl status "$svc" --no-pager -l 2>/dev/null | head -n 15
+    if [[ "$fatal" == "fatal" ]]; then
+        print_error "Critical service '$svc' is not running. Aborting installation."
+        exit 1
+    fi
+    return 1
+}
+
 show_progress() {
     local duration=$1
     local col=$(tput cols)
@@ -272,6 +290,7 @@ EOF
     echo -e "Enterprise VPN Server" > /etc/issue.net
     systemctl daemon-reload
     systemctl enable dropbear --now >/dev/null 2>&1
+    check_service dropbear
     print_success "Dropbear installed and running on port 109."
 }
 
@@ -476,6 +495,7 @@ EOF
 
     systemctl daemon-reload
     systemctl enable xray --now >/dev/null 2>&1
+    check_service xray
     print_success "Xray Core initialized."
 }
 
@@ -493,11 +513,20 @@ print_info "Obtaining SSL Certificates (Let's Encrypt)..."
 dnf install socat lsof certbot -y >/dev/null 2>&1
 systemctl stop httpd nginx >/dev/null 2>&1
 certbot certonly --standalone --preferred-challenges http --agree-tos --email www@${domain} -d $domain --non-interactive
-cp /etc/letsencrypt/live/$domain/fullchain.pem /etc/xray/xray.crt
-cp /etc/letsencrypt/live/$domain/privkey.pem /etc/xray/xray.key
-chmod 644 /etc/xray/xray.crt
-chmod 600 /etc/xray/xray.key
-print_success "Certificates issued."
+
+# Verify the certificate was actually issued before continuing.
+if [[ -f /etc/letsencrypt/live/$domain/fullchain.pem && -f /etc/letsencrypt/live/$domain/privkey.pem ]]; then
+    cp /etc/letsencrypt/live/$domain/fullchain.pem /etc/xray/xray.crt
+    cp /etc/letsencrypt/live/$domain/privkey.pem /etc/xray/xray.key
+    chmod 644 /etc/xray/xray.crt
+    chmod 600 /etc/xray/xray.key
+    print_success "Certificates issued."
+else
+    print_error "Certificate issuance failed for ${domain}."
+    print_error "Check that the domain points to this server's IP and port 80 is reachable."
+    print_warn "Aborting installation. Re-run after fixing DNS/port 80."
+    exit 1
+fi
 
 # Setup Nginx
 nginx_install_logic() {
@@ -617,6 +646,7 @@ server {
 EOF
     systemctl daemon-reload
     systemctl enable nginx --now >/dev/null 2>&1
+    check_service nginx
     print_success "Nginx Enterprise Node optimized."
 }
 
@@ -671,6 +701,7 @@ backend nginx_https
     server nginx_ssl_node 127.0.0.1:444 send-proxy check
 EOF
     systemctl enable haproxy --now >/dev/null 2>&1
+    check_service haproxy
     print_success "HAProxy Balancing complete."
 }
 
@@ -808,6 +839,9 @@ systemctl daemon-reload
 systemctl enable quota limit-ip-vless --now
 systemctl enable quota-trojan limit-ip-trojan --now
 systemctl enable quota-vmess limit-ip-vmess --now
+for svc in quota limit-ip-vless quota-trojan limit-ip-trojan quota-vmess limit-ip-vmess; do
+    check_service "$svc" || print_warn "Looping service '$svc' not active (will retry via Restart=on-failure)."
+done
 
 # Api Server
 # NOTE: The RESTful API server is being rebuilt from scratch and is not yet
@@ -1117,6 +1151,8 @@ EOF
     systemctl enable openvpn-server@server-tcp-1194
     systemctl restart openvpn-server@server-udp-2200
     systemctl restart openvpn-server@server-tcp-1194
+    check_service "openvpn-server@server-udp-2200" || print_warn "OpenVPN UDP not active."
+    check_service "openvpn-server@server-tcp-1194" || print_warn "OpenVPN TCP not active."
 }
 
 if [[ -f "/etc/openvpn/server/server-tcp-1194.conf" ]]; then

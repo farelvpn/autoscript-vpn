@@ -4,6 +4,7 @@
 *.crt
 bot.key
 client.id
+backup.pass
 rclone.conf
 .env
 .env.*

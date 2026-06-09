@@ -149,22 +149,22 @@ check_limits() {
         
         # Check if user exceeds limit
         if [[ $ip_count -gt $limit ]]; then
-            echo -e "  ${RED}❌ User exceeds IP limit!${NC}"
+            echo -e "  ${RED}[X] User exceeds IP limit!${NC}"
             echo -e "  ${RED}Deleting user account...${NC}"
             
             # Delete user with recovery functionality
             output=$(delete_user "$username" 2>&1)
             if [[ $? -eq 0 ]]; then
-                echo -e "  ${GREEN}✅ User $username successfully deleted and moved to recovery${NC}"
+                echo -e "  ${GREEN}[OK] User $username successfully deleted and moved to recovery${NC}"
                 ((deleted_count++))
                 
                 # Log the deletion
                 echo "$(date '+%Y-%m-%d %H:%M:%S') - Deleted user $username for exceeding IP limit ($ip_count/$limit)" >> /var/log/ssh-limit.log
             else
-                echo -e "  ${RED}❌ Failed to delete user: $output${NC}"
+                echo -e "  ${RED}[X] Failed to delete user: $output${NC}"
             fi
         else
-            echo -e "  ${GREEN}✅ User within allowed limits${NC}"
+            echo -e "  ${GREEN}[OK] User within allowed limits${NC}"
         fi
         
         echo -e "${BLUE}──────────────────────────────────────────────────────${NC}"

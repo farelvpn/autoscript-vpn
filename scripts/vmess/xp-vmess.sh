@@ -101,25 +101,25 @@ for username in "${expired_accounts[@]}"; do
     # Move database file to recovery directory
     if [[ -f "/etc/xray/database/vmess/${username}.txt" ]]; then
         mv "/etc/xray/database/vmess/${username}.txt" "/etc/xray/recovery/vmess/${username}.txt"
-        echo "  ✓ Database file moved to recovery"
+        echo "  [OK] Database file moved to recovery"
     fi
     
     # Remove quota limit file if exists
     if [[ -f "/etc/xray/limit/quota/vmess/${username}" ]]; then
         rm -f "/etc/xray/limit/quota/vmess/${username}"
-        echo "  ✓ Quota limit file removed"
+        echo "  [OK] Quota limit file removed"
     fi
     
     # Remove IP limit file if exists
     if [[ -f "/etc/xray/limit/ip/vmess/${username}" ]]; then
         rm -f "/etc/xray/limit/ip/vmess/${username}"
-        echo "  ✓ IP limit file removed"
+        echo "  [OK] IP limit file removed"
     fi
     
     # Remove usage quota file if exists
     if [[ -f "/etc/xray/usage/quota/vmess/${username}" ]]; then
         rm -f "/etc/xray/usage/quota/vmess/${username}"
-        echo "  ✓ Usage quota file removed"
+        echo "  [OK] Usage quota file removed"
     fi
     
     # Remove user from config.json
@@ -127,14 +127,14 @@ for username in "${expired_accounts[@]}"; do
     # Clean up any trailing comma
     sed -i '/},/ { :a;N;$!ba;s/},\n\s*}/}\n}/g; }' /etc/xray/config.json
     
-    echo "  ✓ User entry removed from config.json"
+    echo "  [OK] User entry removed from config.json"
     ((deleted_count++))
 done
 
 # Restart Xray service if any accounts were deleted
 if [[ $deleted_count -gt 0 ]]; then
     systemctl restart xray.service
-    echo "✓ Xray service restarted"
+    echo "[OK] Xray service restarted"
 fi
 
 echo "────────────────────────────────────────────────────────────────"

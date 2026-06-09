@@ -64,17 +64,17 @@ validate_zip_file() {
     local zip_file="$1"
     
     if [[ ! -f "$zip_file" ]]; then
-        echo -e "$(red "❌ File backup tidak ditemukan: $zip_file")"
+        echo -e "$(red "[X] File backup tidak ditemukan: $zip_file")"
         return 1
     fi
     
     # Cek apakah file adalah ZIP yang valid
     if ! unzip -t -P "$PASSWORD" "$zip_file" &>/dev/null; then
-        echo -e "$(red "❌ File ZIP tidak valid atau password salah")"
+        echo -e "$(red "[X] File ZIP tidak valid atau password salah")"
         return 1
     fi
     
-    echo -e "$(green "✅ File backup valid: $(basename "$zip_file")")"
+    echo -e "$(green "[OK] File backup valid: $(basename "$zip_file")")"
     return 0
 }
 
@@ -84,23 +84,23 @@ echo -e "$(green "Memulai proses restore...")"
 echo
 
 # Cek file backup lokal
-echo -e "$(yellow "🔍 Mencari file backup di folder /root...")"
+echo -e "$(yellow " Mencari file backup di folder /root...")"
 backup_file=$(find_backup_file)
 
 if [[ -n "$backup_file" ]]; then
-    echo -e "$(green "✅ File backup ditemukan: $(basename "$backup_file")")"
+    echo -e "$(green "[OK] File backup ditemukan: $(basename "$backup_file")")"
     echo
-    echo -e "$(yellow "📋 Detail file backup:")"
+    echo -e "$(yellow " Detail file backup:")"
     echo -e "   Nama File: $(basename "$backup_file")"
     echo -e "   Ukuran: $(du -h "$backup_file" | cut -f1)"
     echo -e "   Modifikasi: $(stat -c %y "$backup_file" 2>/dev/null || stat -f %Sm "$backup_file")"
     echo
     
     # Konfirmasi penggunaan file backup lokal
-    read -p "$(yellow "⚠️  Gunakan file backup ini untuk restore? (y/N): ")" use_local
+    read -p "$(yellow "[WARN]  Gunakan file backup ini untuk restore? (y/N): ")" use_local
     
     if [[ "$use_local" =~ ^[Yy]$ ]]; then
-        echo -e "$(green "✅ Menggunakan file backup lokal...")"
+        echo -e "$(green "[OK] Menggunakan file backup lokal...")"
     else
         backup_file=""
     fi
@@ -108,15 +108,15 @@ fi
 
 # Jika tidak ada file backup lokal atau user memilih tidak
 if [[ -z "$backup_file" ]]; then
-    echo -e "$(yellow "📥 Mode: Download dari Google Drive")"
+    echo -e "$(yellow " Mode: Download dari Google Drive")"
     echo
     
     # Meminta pengguna memasukkan ID Backup atau URL
     while [[ -z "$backup_url" ]]; do
-        read -rp "$(yellow "🔗 Masukkan ID Backup atau URL Google Drive: ")" input
+        read -rp "$(yellow " Masukkan ID Backup atau URL Google Drive: ")" input
 
         if [[ -z "$input" ]]; then
-            echo -e "$(red "❌ Tidak ada input! Proses restore dibatalkan.")"
+            echo -e "$(red "[X] Tidak ada input! Proses restore dibatalkan.")"
             exit 1
         fi
 
@@ -129,15 +129,15 @@ if [[ -z "$backup_file" ]]; then
 
     # Pastikan paket yang dibutuhkan terinstal
     echo
-    echo -e "$(yellow "📦 Memeriksa dependencies...")"
+    echo -e "$(yellow " Memeriksa dependencies...")"
     
     if ! command -v python3 &>/dev/null || ! command -v pip3 &>/dev/null; then
         echo -e "$(green "Menginstal Python3 dan pip3...")"
         dnf install -y python3 python3-pip > /dev/null 2>&1 || { 
-            echo -e "$(red "❌ Gagal menginstal Python3 dan pip3!")"; 
+            echo -e "$(red "[X] Gagal menginstal Python3 dan pip3!")"; 
             exit 1; 
         }
-        echo -e "$(green "✅ Python3 dan pip3 berhasil diinstal")"
+        echo -e "$(green "[OK] Python3 dan pip3 berhasil diinstal")"
     fi
 
     # Pastikan gdown terinstal
@@ -145,52 +145,52 @@ if [[ -z "$backup_file" ]]; then
         echo -e "$(green "Menginstal gdown...")"
         pip3 install --no-cache-dir gdown > /dev/null 2>&1 || \
         pip3 install --no-cache-dir --break-system-packages gdown > /dev/null 2>&1 || { 
-            echo -e "$(red "❌ Gagal menginstal gdown!")"; 
+            echo -e "$(red "[X] Gagal menginstal gdown!")"; 
             exit 1; 
         }
-        echo -e "$(green "✅ gdown berhasil diinstal")"
+        echo -e "$(green "[OK] gdown berhasil diinstal")"
     fi
 
     # Unduh file backup menggunakan gdown
     echo
-    echo -e "$(yellow "⬇️  Mengunduh file backup...")"
+    echo -e "$(yellow "  Mengunduh file backup...")"
     backup_file="$backup_dir/restore_backup.zip"
     
     gdown --fuzzy -O "$backup_file" "$backup_url" 2>/dev/null
 
     if [[ $? -ne 0 ]] || [[ ! -f "$backup_file" ]]; then
-        echo -e "$(red "❌ Gagal mengunduh file backup!")"
-        echo -e "$(yellow "💡 Pastikan ID/URL benar dan file dapat diakses")"
+        echo -e "$(red "[X] Gagal mengunduh file backup!")"
+        echo -e "$(yellow " Pastikan ID/URL benar dan file dapat diakses")"
         exit 1
     fi
 
-    echo -e "$(green "✅ File backup berhasil diunduh: $(basename "$backup_file")")"
+    echo -e "$(green "[OK] File backup berhasil diunduh: $(basename "$backup_file")")"
 fi
 
 # Validasi file ZIP
 echo
-echo -e "$(yellow "🔐 Memvalidasi file backup...")"
+echo -e "$(yellow " Memvalidasi file backup...")"
 if ! validate_zip_file "$backup_file"; then
-    echo -e "$(red "❌ File backup tidak valid!")"
+    echo -e "$(red "[X] File backup tidak valid!")"
     exit 1
 fi
 
 # Ekstrak file backup
 echo
-echo -e "$(yellow "📂 Mengekstrak file backup...")"
+echo -e "$(yellow " Mengekstrak file backup...")"
 unzip -P "$PASSWORD" -o "$backup_file" -d "$backup_dir" > /dev/null 2>&1
 
 if [[ $? -ne 0 ]]; then
-    echo -e "$(red "❌ Gagal mengekstrak file backup!")"
-    echo -e "$(yellow "💡 Pastikan password benar: $PASSWORD")"
+    echo -e "$(red "[X] Gagal mengekstrak file backup!")"
+    echo -e "$(yellow " Pastikan password benar: $PASSWORD")"
     exit 1
 fi
 
-echo -e "$(green "✅ File backup berhasil diekstrak")"
+echo -e "$(green "[OK] File backup berhasil diekstrak")"
 
 # Restore file sesuai dengan struktur awal
 echo
-echo -e "$(yellow "🔄 Memulai proses pemulihan data...")"
+echo -e "$(yellow " Memulai proses pemulihan data...")"
 
 # Buat direktori backup jika belum ada
 mkdir -p /root/backup
@@ -201,48 +201,48 @@ unzip -P "$PASSWORD" -o "$backup_file" -d "/root" > /dev/null 2>&1
 cd /root/backup
 
 # Restore file sistem
-echo -e "$(yellow "   📝 Restore file sistem...")"
-[[ -f passwd ]] && cp -f passwd /etc/ 2>/dev/null && echo -e "      $(green "✅") /etc/passwd"
-[[ -f group ]] && cp -f group /etc/ 2>/dev/null && echo -e "      $(green "✅") /etc/group"
-[[ -f shadow ]] && cp -f shadow /etc/ 2>/dev/null && echo -e "      $(green "✅") /etc/shadow"
-[[ -f gshadow ]] && cp -f gshadow /etc/ 2>/dev/null && echo -e "      $(green "✅") /etc/gshadow"
+echo -e "$(yellow "    Restore file sistem...")"
+[[ -f passwd ]] && cp -f passwd /etc/ 2>/dev/null && echo -e "      $(green "[OK]") /etc/passwd"
+[[ -f group ]] && cp -f group /etc/ 2>/dev/null && echo -e "      $(green "[OK]") /etc/group"
+[[ -f shadow ]] && cp -f shadow /etc/ 2>/dev/null && echo -e "      $(green "[OK]") /etc/shadow"
+[[ -f gshadow ]] && cp -f gshadow /etc/ 2>/dev/null && echo -e "      $(green "[OK]") /etc/gshadow"
 
 # Restore konfigurasi Xray
-echo -e "$(yellow "   🌐 Restore konfigurasi Xray...")"
+echo -e "$(yellow "    Restore konfigurasi Xray...")"
 if [[ -d xray ]]; then
     cp -rf xray /etc/ 2>/dev/null
-    echo -e "      $(green "✅") /etc/xray/"
+    echo -e "      $(green "[OK]") /etc/xray/"
 fi
 
 # Restore konfigurasi NoobzVPN
-echo -e "$(yellow "   🔐 Restore konfigurasi NoobzVPN...")"
+echo -e "$(yellow "    Restore konfigurasi NoobzVPN...")"
 if [[ -d noobzvpns ]]; then
     cp -rf noobzvpns /etc/ 2>/dev/null
-    echo -e "      $(green "✅") /etc/noobzvpns/"
+    echo -e "      $(green "[OK]") /etc/noobzvpns/"
 fi
 
-echo -e "$(green "✅ Proses restore data selesai")"
+echo -e "$(green "[OK] Proses restore data selesai")"
 
 # Membersihkan file sementara
 echo
-echo -e "$(yellow "🧹 Membersihkan file sementara...")"
+echo -e "$(yellow " Membersihkan file sementara...")"
 rm -f "$backup_dir/restore_backup.zip" 2>/dev/null
 rm -rf /root/backup 2>/dev/null
 
-echo -e "$(green "✅ Pembersihan file sementara selesai")"
+echo -e "$(green "[OK] Pembersihan file sementara selesai")"
 
 # Restart layanan
 echo
-echo -e "$(yellow "🔄 Merestart layanan...")"
+echo -e "$(yellow " Merestart layanan...")"
 systemctl daemon-reload > /dev/null 2>&1
 
 services=("xray" "quota" "quota-vmess" "quota-trojan" "ssh" "sshd")
 for service in "${services[@]}"; do
     if systemctl is-active --quiet "$service" 2>/dev/null; then
         systemctl restart "$service" > /dev/null 2>&1
-        echo -e "      $(green "✅") $service"
+        echo -e "      $(green "[OK]") $service"
     else
-        echo -e "      $(yellow "⚠️") $service (tidak aktif)"
+        echo -e "      $(yellow "[WARN]") $service (tidak aktif)"
     fi
 done
 
@@ -250,16 +250,16 @@ done
 clear
 echo
 echo "========================================================"
-echo -e "$(green "🎉 PROSES RESTORE SELESAI!")"
+echo -e "$(green " PROSES RESTORE SELESAI!")"
 echo "========================================================"
-echo -e "$(green "✅ Semua data berhasil dipulihkan")"
-echo -e "$(green "✅ Layanan telah di-restart")"
-echo -e "$(green "✅ File sementara telah dibersihkan")"
+echo -e "$(green "[OK] Semua data berhasil dipulihkan")"
+echo -e "$(green "[OK] Layanan telah di-restart")"
+echo -e "$(green "[OK] File sementara telah dibersihkan")"
 echo
-echo -e "$(yellow "📋 File yang di-restore:")"
+echo -e "$(yellow " File yang di-restore:")"
 echo -e "   • Konfigurasi Xray (/etc/xray/)"
 echo -e "   • Konfigurasi NoobzVPN (/etc/noobzvpns/)"
 echo -e "   • File sistem (/etc/passwd, /etc/shadow, dll)"
 echo
-echo -e "$(green "✨ Sistem siap digunakan!")"
+echo -e "$(green " Sistem siap digunakan!")"
 echo -e "$NC"

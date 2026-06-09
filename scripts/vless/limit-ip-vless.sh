@@ -8,6 +8,13 @@
 # IP LIMIT CHECKER FOR VLESS ACCOUNTS
 # ========================================================
 
+# Number of consecutive violation cycles required before enforcement.
+# This absorbs transient NAT / log-race false positives so a legitimate
+# user is not suspended over a single spurious reading.
+VIOLATION_THRESHOLD=3
+VIOL_DIR="/etc/xray/limit/ip/vless/.violations"
+mkdir -p "$VIOL_DIR"
+
 while true; do
     # Get all VLESS users
     readarray -t data < <(grep '#÷' /etc/xray/config.json | cut -d ' ' -f 2 | sort | uniq)
@@ -25,6 +32,7 @@ while true; do
                 temp_log="/tmp/vless_${akun}_iplimit.tmp"
                 temp_ips="/tmp/vless_${akun}_current_ips.tmp"
                 temp_networks="/tmp/vless_${akun}_networks.tmp"
+                viol_file="$VIOL_DIR/$akun"
                 
                 # Get recent connections for this user
                 grep -w "email: $akun" /var/log/xray/access.log | grep "accepted" | tail -n 100 > "$temp_log" 2>/dev/null
@@ -44,12 +52,21 @@ while true; do
                     
                     # Check if limit exceeded
                     if [[ "$current_networks" -gt "$limit_ip" ]]; then
-                        echo "User $akun exceeded IP limit ($current_networks > $limit_ip). Deleting account..."
+                        # Increment consecutive-violation counter
+                        viol=$(cat "$viol_file" 2>/dev/null || echo 0)
+                        viol=$((viol + 1))
+                        echo "$viol" > "$viol_file"
+
+                        if [[ "$viol" -lt "$VIOLATION_THRESHOLD" ]]; then
+                            echo "User $akun over IP limit ($current_networks > $limit_ip) - strike $viol/$VIOLATION_THRESHOLD (grace)."
+                        else
+                        echo "User $akun exceeded IP limit ($current_networks > $limit_ip) for $viol cycles. Suspending account (moved to recovery)..."
+                        rm -f "$viol_file"
                         
                         # Create recovery directory if it doesn't exist
                         mkdir -p /etc/xray/recovery/vless
                         
-                        # Move database file to recovery directory
+                        # Move database file to recovery directory (reversible via Recovery menu)
                         if [[ -f "/etc/xray/database/vless/${akun}.txt" ]]; then
                             mv "/etc/xray/database/vless/${akun}.txt" "/etc/xray/recovery/vless/${akun}.txt"
                         fi
@@ -88,8 +105,8 @@ while true; do
                             TEXT+="<b>Username     :</b> <code>$akun</code>%0A"
                             TEXT+="<b>IP Count     :</b> <code>$current_networks</code>%0A"
                             TEXT+="<b>IP Limit     :</b> <code>$limit_ip</code>%0A"
-                            TEXT+="<b>Status       :</b> <code>DELETED</code>%0A"
-                            TEXT+="<b>Recovery     :</b> <code>Available</code>%0A"
+                            TEXT+="<b>Status       :</b> <code>SUSPENDED</code>%0A"
+                            TEXT+="<b>Recovery     :</b> <code>Restore via Recovery menu</code>%0A"
                             TEXT+="<b>━━━━━━━━━━━━━━━━━━━━━━━━</b>%0A"
                             
                             curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
@@ -97,12 +114,17 @@ while true; do
                                 -d parse_mode="HTML" \
                                 -d text="${TEXT}" > /dev/null
                         fi
+                        fi
+                    else
+                        # Within limit: reset the violation counter
+                        rm -f "$viol_file" 2>/dev/null
                     fi
                     
                     # Cleanup temporary files
                     rm -f "$temp_log" "$temp_ips" "$temp_networks"
                 else
-                    # Cleanup temporary files even if no connections found
+                    # No connections found: reset counter and cleanup
+                    rm -f "$viol_file" 2>/dev/null
                     rm -f "$temp_log" "$temp_ips" "$temp_networks"
                 fi
             fi

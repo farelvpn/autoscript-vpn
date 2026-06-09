@@ -108,7 +108,7 @@ delall() {
                 for file in $ssh_files; do
                     if [[ -f "/etc/xray/recovery/ssh/$file" ]]; then
                         rm -f "/etc/xray/recovery/ssh/$file"
-                        echo -e "  ${GREEN}✓${NC} Deleted: $file"
+                        echo -e "  ${GREEN}[OK]${NC} Deleted: $file"
                         ((deleted_count++))
                     fi
                 done
@@ -121,7 +121,7 @@ delall() {
                 for file in $vless_files; do
                     if [[ -f "/etc/xray/recovery/vless/$file" ]]; then
                         rm -f "/etc/xray/recovery/vless/$file"
-                        echo -e "  ${GREEN}✓${NC} Deleted: $file"
+                        echo -e "  ${GREEN}[OK]${NC} Deleted: $file"
                         ((deleted_count++))
                     fi
                 done

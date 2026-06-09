@@ -6,10 +6,10 @@
 # ========================================================
 
 # Fungsi warna
-red() { echo -e "\033[31;1m✖ ${*}\033[0m"; }
-green() { echo -e "\033[32;1m✓ ${*}\033[0m"; }
-yellow() { echo -e "\033[33;1m🔸 ${*}\033[0m"; }
-blue() { echo -e "\033[34;1m🔹 ${*}\033[0m"; }
+red() { echo -e "\033[31;1m[X] ${*}\033[0m"; }
+green() { echo -e "\033[32;1m[OK] ${*}\033[0m"; }
+yellow() { echo -e "\033[33;1m[*] ${*}\033[0m"; }
+blue() { echo -e "\033[34;1m[-] ${*}\033[0m"; }
 
 # Garis pembatas
 border() {
@@ -20,7 +20,7 @@ border() {
 header() {
   clear
   border
-  echo -e "\033[36;1m              🔄 RESTORE SYSTEM              \033[0m"
+  echo -e "\033[36;1m               RESTORE SYSTEM              \033[0m"
   border
 }
 
@@ -48,9 +48,9 @@ restore2() {
   fi
 
   # Input user
-  echo -e "\033[33;1m🔍 Masukkan data backup:\033[0m"
-  read -p "🔗 URL: " ENCRYPTED_URL
-  read -s -p "🔑 Password: " BASE64_PASSWORD
+  echo -e "\033[33;1m Masukkan data backup:\033[0m"
+  read -p " URL: " ENCRYPTED_URL
+  read -s -p " Password: " BASE64_PASSWORD
   echo ""
 
   # Validasi input
@@ -82,7 +82,7 @@ restore2() {
 
   # Download
   border
-  yellow "📥 Mengunduh backup..."
+  yellow " Mengunduh backup..."
   rm -f /tmp/backup.zip
   if ! wget --show-progress -q -O /tmp/backup.zip "$BACKUP_URL"; then
     red "Gagal mengunduh backup!"
@@ -97,7 +97,7 @@ restore2() {
   fi
 
   # Ekstrak
-  yellow "📂 Mengekstrak backup..."
+  yellow " Mengekstrak backup..."
   rm -rf /tmp/restore
   mkdir -p /tmp/restore
   if ! unzip -P "$ZIP_PASSWORD" /tmp/backup.zip -d /tmp/restore >/dev/null 2>&1; then
@@ -118,7 +118,7 @@ restore2() {
 
   # Restore
   border
-  yellow "🔄 Merestore sistem..."
+  yellow " Merestore sistem..."
   
   # File system
   [[ -f "$RESTORE_DIR/passwd" ]] && cp -f "$RESTORE_DIR/passwd" /etc/
@@ -131,22 +131,22 @@ restore2() {
     mkdir -p /etc/xray
     cp -rf "$RESTORE_DIR/xray" /etc/
   else
-    yellow "⚠️ Config xray tidak ditemukan dalam backup"
+    yellow "[WARN] Config xray tidak ditemukan dalam backup"
   fi
 
   # Restart services
-  yellow "♻️ Merestart layanan..."
-  systemctl restart xray 2>/dev/null || yellow "⚠️ Gagal restart xray"
-  systemctl restart sshd 2>/dev/null || yellow "⚠️ Gagal restart SSH"
-  systemctl restart dropbear 2>/dev/null || yellow "⚠️ Gagal restart Dropbear"
+  yellow " Merestart layanan..."
+  systemctl restart xray 2>/dev/null || yellow "[WARN] Gagal restart xray"
+  systemctl restart sshd 2>/dev/null || yellow "[WARN] Gagal restart SSH"
+  systemctl restart dropbear 2>/dev/null || yellow "[WARN] Gagal restart Dropbear"
 
   # Cleanup
   rm -rf /tmp/backup.zip /tmp/restore
 
   clear
   border
-  green "✓ Restore berhasil!"
-  blue "🔹 Layanan telah direstart."
+  green "[OK] Restore berhasil!"
+  blue " Layanan telah direstart."
   border
 }
 

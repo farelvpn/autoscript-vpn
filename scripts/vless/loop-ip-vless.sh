@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 # ========================================================
 # Project: Autoscript VPN by risqinf
-# Description: AutoScript VPN & Tunneling Management System
-# Developed for Rocky Linux 9
+# Description: Service entrypoint for VLESS IP-limit enforcement
+# License: Apache License 2.0 (see LICENSE file)
+# Repository: https://github.com/risqinf/autoscript
 # ========================================================
-
-# Looping Limit IP
-for (( ; ; ))
-do
-limit-ip-vless
-sleep 2
-done
+exec /usr/local/sbin/limit-ip-vless

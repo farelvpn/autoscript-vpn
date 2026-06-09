@@ -5,6 +5,9 @@
 # Developed for Rocky Linux 9
 # ========================================================
 
+# --- Database library (SQLite) ---
+[[ -f /usr/local/sbin/lib/db.sh ]] && . /usr/local/sbin/lib/db.sh && db_init 2>/dev/null
+
 # --- Color Definitions ---
 NC='\033[0m' # No Color
 RED='\033[0;31m'
@@ -16,129 +19,41 @@ BIWhite='\033[1;97m'
 # --- Function: Delete All Recovery data ---
 delall() {
     clear
-    NC='\033[0m'
-    GREEN='\033[0;32m'
-    RED='\033[0;31m'
-    YELLOW='\033[1;33m'
-    CYAN='\033[0;36m'
-    BICyan='\033[1;96m'
-    BIWhite='\033[1;97m'
-    
-    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-    echo -e "\e[0;41;36m              DELETE ALL RECOVERY ACCOUNTS                  \e[0m"
-    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+    line
+    echo -e "${WHITE}  PURGE ALL RECOVERY (deleted/expired) ACCOUNTS${NC}"
+    line
     echo ""
-    echo -e "${YELLOW}WARNING: This action will permanently delete ALL recovery files${NC}"
-    echo -e "${YELLOW}for both SSH and VLESS accounts that can be recovered later.${NC}"
+    echo -e "${YELLOW}WARNING: This permanently removes all soft-deleted/expired${NC}"
+    echo -e "${YELLOW}account records from the database. They cannot be recovered.${NC}"
     echo ""
-    
-    ssh_recovery_exists=false
-    vless_recovery_exists=false
-    
-    if [[ -d "/etc/xray/recovery/ssh" ]] && [[ -n "$(ls -A /etc/xray/recovery/ssh/ 2>/dev/null)" ]]; then
-        ssh_recovery_exists=true
-    fi
-    
-    if [[ -d "/etc/xray/recovery/vless" ]] && [[ -n "$(ls -A /etc/xray/recovery/vless/ 2>/dev/null)" ]]; then
-        vless_recovery_exists=true
-    fi
-    
-    if [[ "$ssh_recovery_exists" == false && "$vless_recovery_exists" == false ]]; then
-        echo -e "${YELLOW}No recovery files found in any recovery directories.${NC}"
-        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+
+    local total
+    total=$(db_query "SELECT COUNT(*) FROM accounts WHERE status IN ('deleted','expired');" 2>/dev/null)
+    total=${total:-0}
+
+    if [[ "$total" -eq 0 ]]; then
+        warn "No recoverable (deleted/expired) accounts found."
+        line
         read -n 1 -s -r -p "Press any key to return to menu..."
+        menu
         return 0
     fi
-    
-    echo -e "${BIWhite}Recovery files that will be deleted:${NC}"
-    echo -e "\033[0;34m────────────────────────────────────────────────────────────────\e[037;1m"
-    
-    total_ssh=0
-    total_vless=0
-    
-    if [[ "$ssh_recovery_exists" == true ]]; then
-        echo -e "${BICyan}SSH Recovery Files:${NC}"
-        ssh_files=$(ls /etc/xray/recovery/ssh/ 2>/dev/null)
-        for file in $ssh_files; do
-            if [[ -f "/etc/xray/recovery/ssh/$file" ]]; then
-                echo -e "  ${GREEN}•${NC} $file"
-                ((total_ssh++))
-            fi
-        done
-        echo ""
-    fi
-    
-    if [[ "$vless_recovery_exists" == true ]]; then
-        echo -e "${BICyan}VLESS Recovery Files:${NC}"
-        vless_files=$(ls /etc/xray/recovery/vless/ 2>/dev/null)
-        for file in $vless_files; do
-            if [[ -f "/etc/xray/recovery/vless/$file" ]]; then
-                echo -e "  ${GREEN}•${NC} $file"
-                ((total_vless++))
-            fi
-        done
-    fi
-    
-    echo -e "\033[0;34m────────────────────────────────────────────────────────────────\e[037;1m"
-    echo -e "${BIWhite}Total files to delete:${NC}"
-    echo -e "  SSH: ${RED}$total_ssh${NC} files"
-    echo -e "  VLESS: ${RED}$total_vless${NC} files"
-    echo -e "  ${BIWhite}TOTAL:${NC} ${RED}$((total_ssh + total_vless))${NC} files"
-    echo ""
-    
-    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-    echo -e "${YELLOW}IMPORTANT:${NC}"
-    echo -e "${YELLOW}Once deleted, these recovery files cannot be restored!${NC}"
-    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-    echo ""
-    
-    read -rp $'\e[1;31mAre you absolutely sure you want to delete ALL recovery files? (yes/NO): \e[0m' confirm
-    
+
+    echo -e "Recoverable records to purge: ${RED}${total}${NC}"
+    db_query "SELECT protocol||'  '||username||'  ('||status||')'
+              FROM accounts WHERE status IN ('deleted','expired') ORDER BY protocol;" \
+      | while read -r row; do echo -e "  ${GREEN}-${NC} $row"; done
+    line
+    read -rp $'\e[1;31mPurge ALL these records permanently? (yes/NO): \e[0m' confirm
     case "$confirm" in
-        yes|YES|Yes|y|Y)
-            echo ""
-            echo -e "${YELLOW}Deleting recovery files...${NC}"
-            echo ""
-            
-            deleted_count=0
-            
-            if [[ "$ssh_recovery_exists" == true ]]; then
-                echo -e "${BICyan}Deleting SSH recovery files...${NC}"
-                ssh_files=$(ls /etc/xray/recovery/ssh/ 2>/dev/null)
-                for file in $ssh_files; do
-                    if [[ -f "/etc/xray/recovery/ssh/$file" ]]; then
-                        rm -f "/etc/xray/recovery/ssh/$file"
-                        echo -e "  ${GREEN}[OK]${NC} Deleted: $file"
-                        ((deleted_count++))
-                    fi
-                done
-                echo ""
-            fi
-            
-            if [[ "$vless_recovery_exists" == true ]]; then
-                echo -e "${BICyan}Deleting VLESS recovery files...${NC}"
-                vless_files=$(ls /etc/xray/recovery/vless/ 2>/dev/null)
-                for file in $vless_files; do
-                    if [[ -f "/etc/xray/recovery/vless/$file" ]]; then
-                        rm -f "/etc/xray/recovery/vless/$file"
-                        echo -e "  ${GREEN}[OK]${NC} Deleted: $file"
-                        ((deleted_count++))
-                    fi
-                done
-                echo ""
-            fi
-            
-            echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-            echo -e "${GREEN}SUCCESS:${NC} ${BIWhite}Deleted ${RED}$deleted_count${NC} ${BIWhite}recovery files${NC}"
-            echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+        yes|YES|Yes)
+            db_exec "DELETE FROM accounts WHERE status IN ('deleted','expired');"
+            db_audit "purge_recovery" "" "" "count=${total}"
+            ok "Purged ${total} recovery records."
             ;;
-        *)
-            echo ""
-            echo -e "${YELLOW}Operation cancelled. No files were deleted.${NC}"
-            echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-            ;;
+        *) warn "Cancelled. Nothing was purged." ;;
     esac
-    
+    line
     read -n 1 -s -r -p "Press any key to return to menu..."
     menu
 }
@@ -321,11 +236,11 @@ else
   tmon=$(format_usage "$total_month")
 fi
 
-# --- TOTAL ACCOUNT COUNT (Diperbaiki) ---
-ssh1=$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd | wc -l)
-vls=$(grep -c '#÷' /etc/xray/config.json | sort | uniq)
-vms=$(grep -c '###' /etc/xray/config.json | sort | uniq)
-tro=$(grep -c '#@' /etc/xray/config.json | sort | uniq) 
+# --- TOTAL ACCOUNT COUNT (DB-driven) ---
+ssh1=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='ssh' AND status!='deleted';" 2>/dev/null); ssh1=${ssh1:-0}
+vls=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='vless' AND status!='deleted';" 2>/dev/null); vls=${vls:-0}
+vms=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='vmess' AND status!='deleted';" 2>/dev/null); vms=${vms:-0}
+tro=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='trojan' AND status!='deleted';" 2>/dev/null); tro=${tro:-0}
 
 # --- SERVICE STATUS ---
 ressh="${RED}OFF${NC}"

@@ -53,6 +53,8 @@ echo "Removing management scripts..."
 # Remove the API command handlers and the menu/command scripts installed
 # into /usr/local/sbin (bare command names without .sh).
 rm -rf /usr/local/sbin/api
+rm -rf /usr/local/sbin/lib
+rm -f /usr/local/sbin/db-migrate
 for cmd in menu menu-ssh menu-vless menu-vmess menu-trojan menu-host menu-backup menu-api menu-dropbear \
     add-ssh add-vless add-vmess add-trojan add-bulk \
     trial-ssh trial-vless trial-vmess trial-trojan \

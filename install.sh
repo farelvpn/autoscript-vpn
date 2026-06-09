@@ -119,7 +119,7 @@ dnf install epel-release -y >/dev/null 2>&1
 dnf makecache >/dev/null 2>&1
 
 print_info "Installing core dependencies..."
-dnf install wget curl openssl sudo binutils coreutils gnupg2 bc vnstat htop lsof jq python3 ruby rubygems -y >/dev/null 2>&1
+dnf install wget curl openssl sudo binutils coreutils gnupg2 bc vnstat htop lsof jq sqlite tar gzip python3 ruby rubygems -y >/dev/null 2>&1
 gem install lolcat >/dev/null 2>&1
 print_success "Core packages installed."
 
@@ -168,10 +168,17 @@ menu_install_logic() {
 
     local srcdir="$tmpdir/${REPO_NAME}-${REPO_BRANCH}"
 
+    # Install shared libraries into /usr/local/sbin/lib (sourced, not commands).
+    mkdir -p /usr/local/sbin/lib
+    if [[ -d "$srcdir/scripts/lib" ]]; then
+        install -m 0644 "$srcdir/scripts/lib/"*.sh /usr/local/sbin/lib/ 2>/dev/null
+    fi
+
     # Install command scripts (strip .sh) into /usr/local/sbin so they are
-    # callable by bare name, matching the inter-script references.
+    # callable by bare name. Exclude api/ and lib/.
     mkdir -p /usr/local/sbin/api
-    find "$srcdir/scripts" -maxdepth 2 -type f -name '*.sh' ! -path '*/api/*' | while read -r file; do
+    find "$srcdir/scripts" -maxdepth 2 -type f -name '*.sh' \
+         ! -path '*/api/*' ! -path '*/lib/*' | while read -r file; do
         name=$(basename "$file" .sh)
         install -m 0755 "$file" "/usr/local/sbin/$name"
     done
@@ -183,7 +190,7 @@ menu_install_logic() {
     done
 
     rm -rf "$tmpdir"
-    print_success "Menu scripts integrated."
+    print_success "Menu scripts and libraries integrated."
 }
 
 if [[ -f "/usr/local/sbin/menu" ]]; then
@@ -193,6 +200,20 @@ if [[ -f "/usr/local/sbin/menu" ]]; then
     [[ "$menu_choice" == "2" ]] && menu_install_logic
 else
     menu_install_logic
+fi
+
+# Initialize SQLite database (single source of truth) and migrate any legacy data.
+print_info "Initializing account database (SQLite)..."
+if [[ -f /usr/local/sbin/lib/db.sh ]]; then
+    . /usr/local/sbin/lib/db.sh
+    db_init
+    # Import legacy .txt accounts if present (idempotent).
+    if [[ -d /etc/xray/database ]] && [[ -x /usr/local/sbin/db-migrate ]]; then
+        /usr/local/sbin/db-migrate >/dev/null 2>&1 || true
+    fi
+    print_success "Database initialized at /etc/xray/xray.db."
+else
+    print_error "Database library missing; menu may not function."
 fi
 
 # Ini firewall

@@ -1,86 +1,58 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ========================================================
 # Project: Autoscript VPN by risqinf
-# Description: AutoScript VPN & Tunneling Management System
-# Developed for Rocky Linux 9
+# Description: Recover (restore) deleted/expired SSH account
+# License: Apache License 2.0 (see LICENSE file)
+# Repository: https://github.com/risqinf/autoscript
 # ========================================================
-# recovery-ssh.sh
-# Recovery SSH Account by risqinf
+. /usr/local/sbin/lib/account.sh
 
-REC_DIR="/etc/xray/recovery/ssh"
-DB_DIR="/etc/xray/database/ssh"
-
-# Warna
-RED="\033[0;31m"
-GREEN="\033[0;32m"
-WHITE="\033[1;37m"
-NC="\033[0m" # No Color
+require_root
+db_init
 
 clear
-echo -e "${WHITE}============================================================"
-echo -e "                       RECOVERY SSH ACCOUNT"
-echo -e "============================================================${NC}"
-printf "%-5s %-15s %-15s %-10s\n" "NO" "USERNAME" "EXPIRED" "LIMIT-IP"
-echo -e "------------------------------------------------------------"
-
-FILES=("$REC_DIR"/*.txt)
-TOTAL=0
-for i in "${!FILES[@]}"; do
-    file="${FILES[$i]}"
-    [ -e "$file" ] || continue
-
-    USERNAME=$(grep -i "username:" "$file" | awk '{print $2}')
-    LIMIT_IP=$(grep -i "limit_ip:" "$file" | awk '{print $2}')
-    EXPIRED_RAW=$(grep -i "expired:" "$file" | cut -d' ' -f2-3)
-
-    printf "%-5s %-15s %-15s %-10s\n" "$((i+1))" "$USERNAME" "$EXPIRED_RAW" "$LIMIT_IP"
-    TOTAL=$((TOTAL+1))
-done
-
-if [ $TOTAL -eq 0 ]; then
-    echo -e "${RED}[!] Tidak ada akun untuk direcovery.${NC}"
-    exit 1
+line
+echo -e "${WHITE}  RECOVERY SSH ACCOUNT${NC}"
+line
+printf "%-20s %-22s %-10s\n" "USERNAME" "EXPIRED" "STATUS"
+echo "------------------------------------------------------------"
+total=0
+while IFS='|' read -r u e s; do
+  [[ -z "$u" ]] && continue
+  printf "%-20s %-22s %-10s\n" "$u" "$e" "$s"
+  total=$((total+1))
+done < <(db_query "SELECT username, datetime(expired_at,'unixepoch','localtime'), status
+                   FROM accounts WHERE protocol='ssh' AND status IN ('deleted','suspended','expired')
+                   ORDER BY updated_at DESC;")
+line
+if [[ $total -eq 0 ]]; then
+  warn "No recoverable SSH accounts."
+  read -n 1 -s -r -p "Press any key to menu..."; menu; exit 0
 fi
 
-echo -e "------------------------------------------------------------"
-echo -e "Total Accounts : $TOTAL file(s)"
-echo -e "============================================================"
+read -rp "Username to recover: " user
+read -rp "New expiry (days from now): " days
+if ! valid_username "$user"; then err "Invalid username."; read -n1 -s -r -p "Press any key..."; menu; exit 1; fi
+if ! valid_days "$days"; then err "Days must be 1-3650."; read -n1 -s -r -p "Press any key..."; menu; exit 1; fi
 
-# Pilih username
-read -p "Pilih nomor akun yang ingin direcovery: " CHOICE
-INDEX=$((CHOICE-1))
-file="${FILES[$INDEX]}"
+cnt=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='ssh' AND username='$(sql_escape "$user")' AND status IN ('deleted','suspended','expired');")
+[[ "$cnt" -gt 0 ]] || { err "Not a recoverable account."; read -n1 -s -r -p "Press any key..."; menu; exit 1; }
 
-if [ ! -f "$file" ]; then
-    echo -e "${RED}[!] File tidak ditemukan.${NC}"
-    exit 1
-fi
+pass=$(db_query "SELECT secret FROM accounts WHERE protocol='ssh' AND username='$(sql_escape "$user")' ORDER BY updated_at DESC LIMIT 1;")
+new_epoch=$(( $(date +%s) + days * 86400 ))
+exp_system=$(date -d "@${new_epoch}" +%Y-%m-%d)
 
-# Ambil data dari file
-USERNAME=$(grep -i "username:" "$file" | awk '{print $2}')
-PASSWORD=$(grep -i "password:" "$file" | awk '{print $2}')
-LIMIT_IP=$(grep -i "limit_ip:" "$file" | awk '{print $2}')
-EXPIRED_RAW=$(grep -i "expired:" "$file" | cut -d' ' -f2-3)
-
-DAY=$(echo "$EXPIRED_RAW" | awk -F'-' '{print $1}')
-MONTH=$(echo "$EXPIRED_RAW" | awk -F'-' '{print $2}')
-YEAR=$(echo "$EXPIRED_RAW" | awk -F'-' '{print $3}' | awk '{print $1}')
-EXPIRED="$YEAR-$MONTH-$DAY"
-
-# Status
-if id "$USERNAME" &>/dev/null; then
-    STATUS="${RED}Already${NC}"
+if id "$user" &>/dev/null; then
+  chage -E "$exp_system" "$user" 2>/dev/null
 else
-    useradd -e "$EXPIRED" -M -s /sbin/nologin "$USERNAME"
-    echo -e "$PASSWORD\n$PASSWORD" | passwd "$USERNAME" &>/dev/null
-    STATUS="${GREEN}Recovered${NC}"
+  useradd -e "$exp_system" -M -N -s /sbin/nologin "$user" || { err "useradd failed"; read -n1 -s -r -p "Press any key..."; menu; exit 1; }
+  echo "${user}:${pass}" | chpasswd
 fi
 
-# Pindahkan file
-mv "$file" "$DB_DIR/$USERNAME.txt"
-
-echo -e "${WHITE}============================================================"
-printf "%-15s %-15s %-10s %-10s\n" "USERNAME" "EXPIRED" "LIMIT-IP" "STATUS"
-echo -e "------------------------------------------------------------"
-printf "%-15s %-15s %-10s %-10b\n" "$USERNAME" "$EXPIRED_RAW" "$LIMIT_IP" "$STATUS"
-echo -e "============================================================${NC}"
+db_set_expired "ssh" "$user" "$new_epoch"
+db_audit "recover" "ssh" "$user" "+${days}d"
+systemctl restart dropbear >/dev/null 2>&1
+ok "Recovered '$user' (expires in ${days} days)."
+line
+read -n 1 -s -r -p "Press any key to menu..."
+menu

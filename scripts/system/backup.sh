@@ -1,273 +1,71 @@
 #!/usr/bin/env bash
 # ========================================================
 # Project: Autoscript VPN by risqinf
-# Description: AutoScript VPN & Tunneling Management System
-# Developed for Rocky Linux 9
-# ========================================================
-# ========================================================
-# Author: risqinf
+# Description: Encrypted backup (SQLite DB + config) sent to Telegram
 # License: Apache License 2.0 (see LICENSE file)
 # Repository: https://github.com/risqinf/autoscript
 # ========================================================
+. /usr/local/sbin/lib/common.sh
 
-clear
+require_root
+domain=$(get_domain)
+ipsaya=$(curl -s http://checkip.amazonaws.com 2>/dev/null)
+ts=$(date +"%d-%m-%Y")
+tm=$(date +"%H-%M-%S")
+code=$(openssl rand -hex 4)
+zip_file="/root/backup-${ts}-${tm}-${code}.zip"
+work="/root/.backup_work"
 
-# Variabel Waktu
-tanggal=$(date +"%m-%d-%Y")
-waktu=$(date +"%H-%M-%S")  # Menggunakan format waktu yang aman untuk nama file
-random_code=$(openssl rand -hex 4)  # Menghasilkan 4 byte (8 karakter heksadesimal)
-zip_file="/root/backup-${tanggal}-${waktu}-${random_code}.zip"
-backup_dir="/root/backup"
-bot_token_file="/etc/xray/bot.key"
-chat_id_file="/etc/xray/client.id"
-USERNAME="risqinf"
-
-# Backup encryption password: read from secure store, fallback to generated.
-backup_pass_file="/etc/xray/backup.pass"
-if [[ -s "$backup_pass_file" ]]; then
-    PASSWORD=$(cat "$backup_pass_file")
+# Backup encryption password from secure store (fallback: generate + persist).
+pass_file="${AS_ETC}/backup.pass"
+if [[ -s "$pass_file" ]]; then
+  PASSWORD=$(cat "$pass_file")
 else
-    PASSWORD=$(openssl rand -base64 18)
-    mkdir -p /etc/xray
-    printf '%s' "$PASSWORD" > "$backup_pass_file"
-    chmod 600 "$backup_pass_file"
+  PASSWORD=$(openssl rand -base64 18)
+  printf '%s' "$PASSWORD" > "$pass_file"; chmod 600 "$pass_file"
 fi
 
-# Autentikasi dan Informasi Server
-domain=$(cat /etc/xray/domain 2>/dev/null || echo "Unknown")
-ipsaya=$(curl -s http://checkip.amazonaws.com)
-asn_info=$(timeout 5 curl -s "http://ip-api.com/json/$ipsaya" | jq -r '.isp // "Unknown ISP"')
-
-# Fungsi Warna Output
-green() { echo -e "\\033[32;1m${*}\\033[0m"; }
-red() { echo -e "\\033[31;1m${*}\\033[0m"; }
-yellow() { echo -e "\\033[33;1m${*}\\033[0m"; }
-
-# Fungsi untuk memvalidasi file konfigurasi
-validate_config_files() {
-    local missing_files=()
-    
-    # Cek file bot token
-    if [[ ! -f "$bot_token_file" ]] || [[ ! -s "$bot_token_file" ]]; then
-        missing_files+=("Bot Token")
-        echo -e "$(red "[X] File bot token tidak ditemukan atau kosong: $bot_token_file")"
-    else
-        botToken=$(cat "$bot_token_file")
-        # Validasi format bot token (harus mengandung angka dan huruf)
-        if ! echo "$botToken" | grep -qE '[0-9]+:[a-zA-Z0-9_-]+'; then
-            echo -e "$(red "[X] Format bot token tidak valid")"
-            missing_files+=("Bot Token")
-        fi
-    fi
-    
-    # Cek file chat ID
-    if [[ ! -f "$chat_id_file" ]] || [[ ! -s "$chat_id_file" ]]; then
-        missing_files+=("Chat ID")
-        echo -e "$(red "[X] File chat ID tidak ditemukan atau kosong: $chat_id_file")"
-    else
-        chatId=$(cat "$chat_id_file")
-        # Validasi format chat ID (harus angka)
-        if ! echo "$chatId" | grep -qE '^-?[0-9]+$'; then
-            echo -e "$(red "[X] Format chat ID tidak valid")"
-            missing_files+=("Chat ID")
-        fi
-    fi
-    
-    # Jika ada file yang missing, minta input dari user
-    if [[ ${#missing_files[@]} -gt 0 ]]; then
-        echo -e "\n$(yellow "[WARN]  File konfigurasi berikut tidak ditemukan atau kosong:")"
-        printf '%s\n' "${missing_files[@]}"
-        echo -e "\n$(yellow "Silakan isi informasi berikut:")"
-        
-        for item in "${missing_files[@]}"; do
-            case "$item" in
-                "Bot Token")
-                    echo -e "$(yellow "Masukkan Bot Token Telegram:")"
-                    read -r botToken
-                    if [[ -n "$botToken" ]]; then
-                        # Buat direktori jika belum ada
-                        mkdir -p "/etc/xray"
-                        echo "$botToken" > "$bot_token_file"
-                        chmod 600 "$bot_token_file"
-                        echo -e "$(green "[OK] Bot Token disimpan ke $bot_token_file")"
-                    else
-                        echo -e "$(red "[X] Bot Token tidak boleh kosong!")"
-                        exit 1
-                    fi
-                    ;;
-                "Chat ID")
-                    echo -e "$(yellow "Masukkan Chat ID Telegram:")"
-                    read -r chatId
-                    if [[ -n "$chatId" ]]; then
-                        # Buat direktori jika belum ada
-                        mkdir -p "/etc/xray"
-                        echo "$chatId" > "$chat_id_file"
-                        chmod 600 "$chat_id_file"
-                        echo -e "$(green "[OK] Chat ID disimpan ke $chat_id_file")"
-                    else
-                        echo -e "$(red "[X] Chat ID tidak boleh kosong!")"
-                        exit 1
-                    fi
-                    ;;
-            esac
-        done
-    else
-        # Jika file ada dan valid, baca nilainya
-        botToken=$(cat "$bot_token_file")
-        chatId=$(cat "$chat_id_file")
-        echo -e "$(green "[OK] File konfigurasi ditemukan dan valid")"
-    fi
-}
-
-# Fungsi untuk test koneksi Telegram
-test_telegram_connection() {
-    echo -e "$(yellow "Menguji koneksi ke Telegram...")"
-    local response
-    response=$(curl -s -w "%{http_code}" "https://api.telegram.org/bot${botToken}/getMe")
-    local status_code="${response: -3}"
-    
-    if [[ "$status_code" == "200" ]]; then
-        echo -e "$(green "[OK] Koneksi Telegram berhasil")"
-        return 0
-    else
-        echo -e "$(red "[X] Gagal terhubung ke Telegram. Status code: $status_code")"
-        echo -e "$(yellow "Periksa kembali Bot Token dan pastikan bot sudah aktif.")"
-        return 1
-    fi
-}
-
-# Fungsi untuk mengirim file ke Telegram
-send_file_to_telegram() {
-    local file_path="$1"
-    local caption="$2"
-    
-    echo -e "$(yellow "Mengirim file ke Telegram...")"
-    
-    # Cek ukuran file
-    local file_size=$(stat -c%s "$file_path" 2>/dev/null || stat -f%z "$file_path")
-    local max_size=$((50 * 1024 * 1024))  # 50MB batas maksimal Telegram
-    
-    if [[ $file_size -gt $max_size ]]; then
-        echo -e "$(red "[X] File terlalu besar ($((file_size/1024/1024))MB). Batas maksimal Telegram adalah 50MB.")"
-        return 1
-    fi
-    
-    # Kirim file menggunakan API Telegram
-    local response
-    response=$(curl -s -F "chat_id=${chatId}" \
-                    -F "caption=${caption}" \
-                    -F "parse_mode=Markdown" \
-                    -F "document=@${file_path}" \
-                    "https://api.telegram.org/bot${botToken}/sendDocument")
-    
-    # Cek apakah pengiriman berhasil
-    if echo "$response" | grep -q '"ok":true'; then
-        echo -e "$(green "[OK] File berhasil dikirim ke Telegram")"
-        return 0
-    else
-        echo -e "$(red "[X] Gagal mengirim file ke Telegram")"
-        echo -e "$(yellow "Response: $response")"
-        return 1
-    fi
-}
-
-# Validasi file konfigurasi
-echo -e "$(green "Memulai validasi konfigurasi...")"
-validate_config_files
-
-# Test koneksi Telegram
-if ! test_telegram_connection; then
-    echo -e "$(red "Gagal terhubung ke Telegram. Script dihentikan.")"
-    exit 1
+botToken=$(cat "$AS_BOTKEY" 2>/dev/null)
+chatId=$(cat "$AS_CHATID" 2>/dev/null)
+if [[ -z "$botToken" || -z "$chatId" ]]; then
+  err "Telegram bot.key/client.id not configured."; exit 1
 fi
 
-echo -e "$(green "Memulai Backup")"
-sleep 1
+info "Preparing backup..."
+rm -rf "$work"; mkdir -p "$work/etc"
 
-# Buat Direktori Backup
-rm -rf "$backup_dir"
-mkdir -p "$backup_dir"
+# Checkpoint WAL so xray.db is consistent, then copy DB + sidecars.
+sqlite3 "$AS_DB" "PRAGMA wal_checkpoint(TRUNCATE);" >/dev/null 2>&1
+cp -f "$AS_DB" "$work/etc/" 2>/dev/null
+cp -f "$AS_CONFIG" "$work/etc/" 2>/dev/null
+cp -f "$AS_DOMAIN_FILE" "$work/etc/" 2>/dev/null
+cp -f "$AS_BOTKEY" "$AS_CHATID" "$work/etc/" 2>/dev/null
+cp -f /etc/passwd /etc/shadow /etc/group /etc/gshadow "$work/" 2>/dev/null
 
-# Salin File yang Akan Dibackup
-sleep 1
-echo Start Backup 2>/dev/null
-rm -rf /root/backup 2>/dev/null
-mkdir /root/backup 2>/dev/null
-cp /etc/passwd /root/backup/ &> /dev/null
-cp /etc/group /root/backup/ &> /dev/null
-cp /etc/shadow /root/backup/ &> /dev/null
-cp /etc/gshadow /root/backup/ &> /dev/null
-cp -r /etc/xray/ /root/backup/xray 2>/dev/null
-mkdir -p /root/backup/noobzvpns
-cd /root
+dnf install zip -y >/dev/null 2>&1
+( cd "$work" && zip -rqP "$PASSWORD" "$zip_file" . )
+rm -rf "$work"
 
-# Buat File ZIP dengan Password
-echo -e "$(yellow "Membuat file backup terenkripsi...")"
-zip -rP "$PASSWORD" "$zip_file" "backup"
+if [[ ! -f "$zip_file" ]]; then err "Failed to create backup archive."; exit 1; fi
 
-if [[ ! -f "$zip_file" ]]; then
-    echo -e "$(red "Gagal membuat file ZIP.")"
-    exit 1
-fi
+caption="[OK] Backup
+File   : $(basename "$zip_file")
+Domain : ${domain}
+IP     : ${ipsaya}
+Date   : ${ts} ${tm}
+Code   : ${code}
+Pass   : ${PASSWORD}"
 
-# Buat caption untuk Telegram
-caption="[OK] *Backup Berhasil!*
+info "Sending backup to Telegram..."
+resp=$(curl -s -F "chat_id=${chatId}" -F "caption=${caption}" \
+            -F "document=@${zip_file}" \
+            "https://api.telegram.org/bot${botToken}/sendDocument")
 
- *File Backup:* \`$(basename "$zip_file")\`
-
- *Informasi Server:*
-┣  **Nama Pengguna:** $USERNAME
-┣  **Domain:** $domain
-┣  **ISP:** $asn_info
-┣  **IP VPS:** \`$ipsaya\`
-┣ ⏰ **Waktu Backup:** $tanggal pukul $waktu
-┣  **Kode Unik:** $random_code
-┣  **Password:** \`$PASSWORD\`
-┗━━━━━━━━━━━━━━━━━
-
- *Detail Backup:*
-┣  **Tanggal:** $tanggal
-┣  **Waktu:** $waktu
-┣  **Kode Unik:** $random_code
-┗  **Password:** $PASSWORD
-
- *Keamanan: File backup dilindungi dengan password.*  
- *Proses backup ini dilakukan secara otomatis untuk menjaga data Anda tetap aman.*
-
- *Terima kasih telah menggunakan layanan kami!*"
-
-# Kirim file langsung ke Telegram
-if send_file_to_telegram "$zip_file" "$caption"; then
-    echo -e "$(green "[OK] Backup berhasil dikirim ke Telegram")"
+if echo "$resp" | grep -q '"ok":true'; then
+  ok "Backup sent to Telegram."
 else
-    echo -e "$(red "[X] Gagal mengirim backup ke Telegram")"
-    # Tampilkan informasi meskipun gagal kirim
+  warn "Backup created but Telegram send failed."
 fi
 
-# Tampilkan detail backup di CLI
-clear
-echo -e "\n$(green "Backup selesai.")"
-echo -e "$(green "Detail Backup:")"
-echo -e " File Backup: $(basename "$zip_file")"
-echo -e " Informasi Server:"
-echo -e "┣  Nama Pengguna: $USERNAME"
-echo -e "┣  Domain: $domain"
-echo -e "┣  ISP: $asn_info"
-echo -e "┣  IP VPS: $ipsaya"
-echo -e "┣ ⏰ Waktu Backup: $tanggal pukul $waktu"
-echo -e "┣  Kode Unik: $random_code"
-echo -e "┣  Password: $PASSWORD"
-echo -e "┗━━━━━━━━━━━━━━━━━"
-echo -e " Detail Backup:"
-echo -e "┣  Tanggal: $tanggal"
-echo -e "┣  Waktu: $waktu"
-echo -e "┣  Kode Unik: $random_code"
-echo -e "┗  Password: $PASSWORD"
-echo -e " Keamanan: File backup dilindungi dengan password."
-echo -e " Proses backup ini dilakukan secara otomatis untuk menjaga data Anda tetap aman."
-
-# Bersihkan file temporary
 rm -f "$zip_file"
-rm -rf "$backup_dir"
-
-echo -e "\n$(green "[OK] Proses backup selesai!")"
+ok "Backup complete."

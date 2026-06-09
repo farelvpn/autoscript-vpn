@@ -44,21 +44,32 @@ autoscript/
 │   └── API.md              # Web API documentation
 ├── files/                  # Reserved for the RESTful API server (WIP)
 └── scripts/
+    ├── lib/                # Shared libraries (common, db, xraycfg, account)
     ├── menu/               # menu, menu-ssh, menu-vless, menu-vmess, ...
     ├── ssh/                # SSH account management
     ├── vless/              # VLESS account management
     ├── vmess/              # VMESS account management
     ├── trojan/             # Trojan account management
-    ├── system/             # backup, restore, domain, timezone, ...
+    ├── system/             # backup, restore, db-migrate, domain, timezone, ...
     └── api/                # API command handlers
 ```
 
 Scripts are stored with a `.sh` extension in the repository. During
 installation they are deployed to `/usr/local/sbin` as bare command names
-(without `.sh`) so the menu can invoke them directly. API handlers are
-installed under `/usr/local/sbin/api`.
+(without `.sh`) so the menu can invoke them directly. Shared libraries are
+installed to `/usr/local/sbin/lib` and API handlers to `/usr/local/sbin/api`.
 
-> The RESTful API server in `files/` is being rebuilt and is not yet shipped.
+## Data model
+
+Account state lives in a single SQLite database at `/etc/xray/xray.db`
+(WAL mode, foreign keys, strict CHECK constraints, audit log). The Xray
+`config.json` is pure JSON with no comment markers; clients are managed with
+`jq` and every change is validated with `xray -test` and rolled back on
+failure. There are no `.txt` account files. Existing installs are migrated
+automatically by `db-migrate` during install.
+
+> The RESTful API server in `files/` is being rebuilt (C++ or Rust) and is
+> not yet shipped.
 
 ## Uninstall
 

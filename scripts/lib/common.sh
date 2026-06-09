@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# ========================================================
+# Project: Autoscript VPN by risqinf
+# Description: Shared common helpers (colors, validation, IO)
+# License: Apache License 2.0 (see LICENSE file)
+# Repository: https://github.com/risqinf/autoscript
+# ========================================================
+# Source this file:  . /usr/local/sbin/lib/common.sh
+# Guard against double-sourcing.
+[[ -n "${__AS_COMMON_LOADED:-}" ]] && return 0
+__AS_COMMON_LOADED=1
+
+# --- Paths ---
+export AS_ETC="/etc/xray"
+export AS_DB="${AS_ETC}/xray.db"
+export AS_CONFIG="${AS_ETC}/config.json"
+export AS_DOMAIN_FILE="${AS_ETC}/domain"
+export AS_BOTKEY="${AS_ETC}/bot.key"
+export AS_CHATID="${AS_ETC}/client.id"
+export AS_LIBDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- Colors ---
+export NC='\033[0m'
+export RED='\033[0;31m'
+export GREEN='\033[0;32m'
+export YELLOW='\033[1;33m'
+export BLUE='\033[0;34m'
+export CYAN='\033[0;36m'
+export WHITE='\033[1;37m'
+
+line() { echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"; }
+ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
+info()  { echo -e "${BLUE}[INFO]${NC} $1"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
+err()   { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# --- Domain / IP ---
+get_domain() { cat "$AS_DOMAIN_FILE" 2>/dev/null || echo "not set"; }
+get_ip() {
+  if [[ -s /root/.ip ]]; then cat /root/.ip
+  else hostname -I | awk '{print $1}'
+  fi
+}
+
+# --- Validation (strict allowlists) ---
+valid_username() { [[ "$1" =~ ^[a-zA-Z0-9_]{3,32}$ ]]; }
+valid_prefix()   { [[ "$1" =~ ^[a-zA-Z0-9_]{1,16}$ ]]; }
+valid_number()   { [[ "$1" =~ ^[0-9]+$ ]]; }
+valid_days()     { [[ "$1" =~ ^[0-9]+$ ]] && (( $1 >= 1 && $1 <= 3650 )); }
+valid_duration() { [[ "$1" =~ ^[0-9]+[mhd]$ ]]; }
+valid_uuid()     { [[ "$1" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; }
+valid_password() {
+  # Non-empty, no whitespace/control/colon (safe for chpasswd and configs)
+  [[ -n "$1" ]] || return 1
+  [[ "$1" == *[$'\n\r\t :']* ]] && return 1
+  return 0
+}
+valid_domain()   { [[ "$1" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; }
+
+gen_uuid() { cat /proc/sys/kernel/random/uuid; }
+gen_pass() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-10}"; }
+
+# --- Duration -> seconds ---
+duration_to_seconds() {
+  local d="$1" v="${1%?}" u="${1: -1}"
+  case "$u" in
+    m) echo $(( v * 60 ));;
+    h) echo $(( v * 3600 ));;
+    d) echo $(( v * 86400 ));;
+    *) echo 0;;
+  esac
+}
+
+# --- Telegram ---
+tg_send() {
+  local text="$1"
+  local token chat
+  token=$(cat "$AS_BOTKEY" 2>/dev/null)
+  chat=$(cat "$AS_CHATID" 2>/dev/null)
+  [[ -z "$token" || -z "$chat" ]] && return 1
+  curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
+    -d chat_id="${chat}" -d parse_mode="HTML" \
+    --data-urlencode "text=${text}" >/dev/null 2>&1
+}
+
+# --- Require root ---
+require_root() {
+  if [[ $EUID -ne 0 ]]; then err "This must be run as root."; exit 1; fi
+}

@@ -76,14 +76,14 @@ logging, and resource-tuning improvements from live VPS testing.
   shadowed the global menu) to call the real `backup`/`restore` commands.
 
 ### UI
-- Modern, uniform UI: a single light horizontal rule (U+2500) everywhere
-  (dropped the `=`/heavy-bar/box-drawing mix); width-adaptive
-  `ui_header`/`ui_rule` so menus stay tidy on small phone terminals
-  (Termux/PuTTY) and don't wrap; single-column numbered options via `ui_opt`;
-  shared `ui_kv` "label : value" rows.
-- Main-menu status realigned into clean rows (no more wrapped `: Nginx`
-  continuation line); every submenu (SSH/VLESS/VMESS/Trojan/System/Backup/
-  Host/API/Dropbear) uses the same header + option layout.
+- Modern, uniform UI: heavy-framed centered headers (`• TITLE •` between
+  `━` edges), a light `─` rule for in-panel separators, bracketed status
+  badges (`[ ON ]` / `[ WARN ]` / `[ OFF ]`), section labels with a `»` marker,
+  and `│`-separated numbered options via `ui_opt`. Shared `ui_kv`/`ui_status`
+  rows give every "label : value" a colored colon.
+- Main menu shows each service on its own aligned `[ ON ]/[ OFF ]` row
+  (SSH+WS, Xray, Nginx, HAProxy, OpenVPN); status page reuses the same badges.
+  All width-adaptive so it stays tidy on small phone terminals (Termux/PuTTY).
 - All decorative glyphs in terminal output replaced with ASCII so they render
   on every terminal/codepage. Telegram messages keep their rich HTML formatting
   for copy-paste by sellers.

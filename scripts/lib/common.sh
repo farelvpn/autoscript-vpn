@@ -55,18 +55,22 @@ err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 # --- Consistent UI primitives (used by every menu/script) ---
 # A single modern horizontal rule (the one separator style used everywhere).
 ui_rule() { echo -e "${CYAN}$(ui_rep '─' "$(ui_width)")${NC}"; }
-# Centered title between two rules (clean, width-adaptive, no side bars so it
-# never breaks on narrow phone terminals). Arg: title text.
+# A heavier rule used to frame headers (top/bottom of a panel).
+ui_edge() { echo -e "${BICyan}$(ui_rep '━' "$(ui_width)")${NC}"; }
+# Centered title framed by heavy rules (clean, width-adaptive, no side bars so
+# it never breaks on narrow phone terminals). Arg: title text.
 ui_header() {
   local t="$1" w; w=$(ui_width)
-  (( ${#t} > w )) && t="${t:0:w}"
-  local pad=$(( (w - ${#t}) / 2 )); (( pad < 0 )) && pad=0
-  ui_rule
-  printf "${BICyan}%*s%s${NC}\n" "$pad" "" "$t"
-  ui_rule
+  local deco="• ${t} •"
+  (( ${#deco} > w )) && deco="${t}"
+  (( ${#deco} > w )) && deco="${deco:0:w}"
+  local pad=$(( (w - ${#deco}) / 2 )); (( pad < 0 )) && pad=0
+  ui_edge
+  printf "${BICyan}%*s%s${NC}\n" "$pad" "" "$deco"
+  ui_edge
 }
 ui_sep()  { ui_rule; }
-ui_foot() { ui_rule; }
+ui_foot() { ui_edge; }
 # Centered title line only (no rules around it). Arg: title.
 ui_center() {
   local t="$1" w; w=$(ui_width)
@@ -74,37 +78,40 @@ ui_center() {
   local pad=$(( (w - ${#t}) / 2 )); (( pad < 0 )) && pad=0
   printf "${WHITE}%*s%s${NC}\n" "$pad" "" "$t"
 }
-# Section label (left aligned, bold-ish). Arg: text.
-ui_label() { echo -e " ${BIWhite}$1${NC}"; }
+# Section label (left aligned, bright). Arg: text.
+ui_label() { echo -e " ${BIWhite}» $1${NC}"; }
 # A numbered menu option row. Args: number text.
-ui_opt() { printf "  ${GREEN}%2s${NC}) %s\n" "$1" "$2"; }
+ui_opt() { printf "  ${BICyan}%2s${NC} ${WHITE}│${NC} %s\n" "$1" "$2"; }
 # Standard "back to menu" prompt used everywhere.
 ui_back() { echo ""; read -n 1 -s -r -p " Press any key to return..."; }
 # Aligned "label : value" row used by all detail/output panels.
 # Args: label value [value-color]
 ui_kv() {
   local label="$1" value="$2" vcol="${3:-$GREEN}"
-  printf " ${WHITE}%-12s${NC} : ${vcol}%s${NC}\n" "$label" "$value"
+  printf " ${WHITE}%-12s${NC} ${CYAN}:${NC} ${vcol}%s${NC}\n" "$label" "$value"
 }
+# Service status row: name left, colored bracketed badge after a colon.
+# Args: name badge(pre-colored string)
+ui_status() { printf " ${WHITE}%-12s${NC} ${CYAN}:${NC} %b\n" "$1" "$2"; }
 
 # --- Service status helpers (used by menu + status checker) ---
 # Returns 0 if the unit is active.
 svc_active() { systemctl is-active --quiet "$1" 2>/dev/null; }
-# Colored ON/OFF badge for a single unit. Arg: unit name.
+# Bracketed colored ON/OFF badge for a single unit. Arg: unit name.
 svc_badge() {
-  if svc_active "$1"; then echo -e "${GREEN}ON${NC}"; else echo -e "${RED}OFF${NC}"; fi
+  if svc_active "$1"; then echo -e "${GREEN}[ ON ]${NC}"; else echo -e "${RED}[ OFF ]${NC}"; fi
 }
 # Combined SSH tunnel badge (dropbear + ssh-ws). 3 states:
-#   both up   -> green ON
-#   one up    -> yellow WARN
-#   none up   -> red OFF
+#   both up   -> green [ ON ]
+#   one up    -> yellow [ WARN ]
+#   none up   -> red [ OFF ]
 ssh_stack_badge() {
   local a=0 b=0
   svc_active dropbear && a=1
   svc_active ssh-ws  && b=1
-  if   (( a==1 && b==1 )); then echo -e "${GREEN}ON${NC}"
-  elif (( a==1 || b==1 )); then echo -e "${YELLOW}WARN${NC}"
-  else echo -e "${RED}OFF${NC}"
+  if   (( a==1 && b==1 )); then echo -e "${GREEN}[ ON ]${NC}"
+  elif (( a==1 || b==1 )); then echo -e "${YELLOW}[ WARN ]${NC}"
+  else echo -e "${RED}[ OFF ]${NC}"
   fi
 }
 

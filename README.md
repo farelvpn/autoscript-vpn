@@ -6,6 +6,33 @@ AutoScript VPN & Tunneling Management System, developed for **Rocky Linux 9**.
 
 Supports SSH, VLESS, VMESS, Trojan, and OpenVPN with WebSocket (WS), TLS, and HAProxy, plus a Web API for account management.
 
+## Features
+
+- SSH (OpenSSH + Dropbear) with SSH-over-WebSocket (GO-TUNNEL PRO)
+- VLESS, VMESS, Trojan over WebSocket (TLS + non-TLS) via Xray-core
+- OpenVPN (TCP 1194, UDP 2200)
+- HAProxy + Nginx front (TLS termination, WS routing)
+- SQLite-backed account database with soft-delete + recovery and audit log
+- Per-account quota and IP limit (VLESS/VMESS/Trojan); SSH IP limit
+- Live SSH session monitor with per-user bandwidth (info only)
+- Encrypted backup/restore to Telegram; account notifications to Telegram
+- Strict firewall allowlist; hardened systemd services
+
+## Ports
+
+| Service | Port | Notes |
+|---------|------|-------|
+| OpenSSH | 22, 3303 | management |
+| Dropbear | 109 | SSH |
+| HTTP | 80 | HAProxy → Nginx |
+| HTTPS / TLS | 443 | HAProxy → Nginx → Xray/SSH-WS |
+| BadVPN / UDPGW | 7300/udp | provided by ssh-ws |
+| OpenVPN | 1194/tcp, 2200/udp | |
+
+Internal-only (bound to `127.0.0.1`, not in the firewall allowlist):
+Xray API `10085`, Nginx `81`/`444`, SSH-WS proxy `8888`, SSH-WS API `8081`,
+WebAPI `9000`.
+
 ## Requirements
 
 - Rocky Linux 9 (x86_64)

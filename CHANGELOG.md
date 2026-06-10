@@ -26,6 +26,14 @@ First public beta. Developed for **Rocky Linux 9**.
   starting services.
 - Rich, copy-paste-friendly account output (terminal + Telegram HTML) for
   SSH/VLESS/VMESS/Trojan create, trial, and view.
+- SSH-over-WebSocket via GO-TUNNEL PRO (risqinf/websocket-proxy) static Go
+  binary, tuned for Rocky Linux 9 (`--auth-log /var/log/secure`, runs as root);
+  also provides UDPGW on `7300`.
+- Live SSH session monitor (`cek-ssh`): correlates ssh-ws.log bandwidth and
+  the real client IP to each username via the proxy-port ↔ /var/log/secure
+  mapping (informational; no SSH quota enforcement).
+- `rsyslog` setup so `authpriv` (SSH/Dropbear logins) is written to
+  `/var/log/secure` on minimal EL9 installs.
 - Clean, tabular `docs/API.md` describing the JSON handler contract.
 
 ### Changed
@@ -33,8 +41,15 @@ First public beta. Developed for **Rocky Linux 9**.
   scripts to `/usr/local/sbin` as bare names (no `.sh`); libraries to
   `/usr/local/sbin/lib`; API handlers to `/usr/local/sbin/api`.
 - IP-limit enforcement uses a consecutive-violation grace threshold and
-  suspends (recoverable) instead of hard-deleting.
+  suspends (recoverable) instead of hard-deleting. SSH IP-limit counts only
+  currently-live sessions (via `ss` + proxy-port correlation).
+- Dropbear logs via syslog (dropped `-E`) so logins reach `/var/log/secure`.
 - Backup/restore now archive the SQLite database and pure-JSON config.
+
+### Fixed
+- SSH login failures ("incorrect username or password"): register the nologin
+  shell (`/usr/sbin/nologin`) in `/etc/shells` so PAM's `pam_shells` accepts
+  tunneling accounts.
 
 ### Security
 - Removed a leaked Google Drive OAuth token; rclone is configured

@@ -3,6 +3,39 @@
 All notable changes to this project are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0-beta] - 2026-06-10
+
+Developed for **Rocky Linux 9**. Builds on 0.1.0-beta with output, logging,
+and resource-tuning improvements from live VPS testing.
+
+### Added
+- SSH-over-WebSocket via GO-TUNNEL PRO (risqinf/websocket-proxy) static Go
+  binary, tuned for Rocky Linux 9; provides UDPGW on `7300` and a localhost
+  monitoring API on `8081`.
+- Live SSH session monitor (`cek-ssh`) correlating ssh-ws bandwidth and the
+  real client IP to each username via the proxy-port ↔ `/var/log/secure` map.
+- RAM/CPU auto-tuning: Nginx connections, HAProxy `maxconn`, TCP buffers,
+  `fs.file-max`, swap size, and `vm.swappiness` scale to the machine.
+- Shared SSH display helpers so create/trial/view/checker all show the full
+  detail block (ports, HTTP-custom config, WS payload, OpenVPN links).
+
+### Changed
+- `rsyslog` is installed and `authpriv` routed to `/var/log/secure`; Dropbear
+  logs via syslog (dropped `-E`) so logins are visible there.
+- SSH IP-limit counts only currently-live sessions (via `ss` + proxy-port).
+- Uninstaller rewritten in clear numbered steps; covers every installed
+  artifact and offers optional swap removal.
+
+### Fixed
+- SSH login "incorrect username or password": register `/usr/sbin/nologin`
+  in `/etc/shells` (PAM `pam_shells`).
+- OpenVPN download links 404: Nginx `/risqinf/` alias now points to
+  `/var/www/html/risqinf/` (matching where the `.ovpn` files are written).
+- CLI output for SSH create/trial/view was missing OpenVPN links and the WS
+  payload; now complete and consistent across all SSH actions and `cek-user`.
+- Nginx `worker_connections` no longer fixed at 1048576 (RAM-aware now);
+  removed an install-time `stress-ng` 1 GB allocation that could OOM small VPS.
+
 ## [0.1.0-beta] - 2026-06-10
 
 First public beta. Developed for **Rocky Linux 9**.
@@ -75,4 +108,5 @@ First public beta. Developed for **Rocky Linux 9**.
 - Legacy `.txt` account files and `config.json` comment markers.
 - Ads Block (helium) menu entry.
 
+[0.2.0-beta]: https://github.com/risqinf/autoscript/releases/tag/v0.2.0-beta
 [0.1.0-beta]: https://github.com/risqinf/autoscript/releases/tag/v0.1.0-beta

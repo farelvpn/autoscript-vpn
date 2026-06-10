@@ -5,11 +5,9 @@
 # License: Apache License 2.0 (see LICENSE file)
 # Repository: https://github.com/risqinf/autoscript
 # ========================================================
-. /usr/local/sbin/lib/db.sh
+. /usr/local/sbin/lib/account.sh
 
 db_init
-domain=$(get_domain)
-ip=$(get_ip)
 
 clear
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
@@ -31,22 +29,6 @@ ipl=$(db_get_field "ssh" "$user" "limit_ip"); [[ "$ipl" == "0" ]] && ipl="Unlimi
 exp=$(db_query "SELECT datetime(expired_at,'unixepoch','localtime') FROM accounts WHERE protocol='ssh' AND username='$(sql_escape "$user")' AND status!='deleted';")
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;42;30m                  SSH ACCOUNT DETAILS                       \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Username     : ${user}"
-echo -e " Password     : ${pass}"
-echo -e " Host/IP      : ${domain} / ${ip}"
-echo -e " Limit IP     : ${ipl}"
-echo -e " Expired      : ${exp}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Port OpenSSH : 22, 109"
-echo -e " Port WS HTTP : 80, 8888"
-echo -e " Port WS TLS  : 443"
-echo -e " Port BadVPN  : 7300"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Config HTTP Custom :"
-echo -e " ${domain}:1-65535@${user}:${pass}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ssh_print_cli "$user" "$pass" "$ipl" "$exp" "SSH ACCOUNT DETAILS"
 read -n 1 -s -r -p " Press any key to back to menu..."
 menu

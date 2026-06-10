@@ -122,3 +122,68 @@ acc_ssh_renew() {
   echo "$new"
   return 0
 }
+
+# ---- SHARED DISPLAY HELPERS ----
+# Full SSH account detail to the terminal. Args: user pass ip_disp exp_disp [title]
+ssh_print_cli() {
+  local user="$1" pass="$2" ip_disp="$3" exp_disp="$4" title="${5:-SSH ACCOUNT}"
+  local d; d=$(get_domain); local sip; sip=$(get_ip)
+  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  printf "\e[0;42;30m %-56s \e[0m\n" "$title"
+  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  echo -e " Username     : ${user}"
+  echo -e " Password     : ${pass}"
+  echo -e " Host / IP    : ${d} / ${sip}"
+  echo -e " Limit IP     : ${ip_disp}"
+  echo -e " Expired      : ${exp_disp}"
+  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  echo -e " Port OpenSSH : 22, 109"
+  echo -e " Port WS HTTP : 80, 8888"
+  echo -e " Port WS TLS  : 443"
+  echo -e " Port BadVPN  : 7300 (UDPGW)"
+  echo -e " Port OpenVPN : 1194 (TCP) / 2200 (UDP)"
+  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  echo -e " Config HTTP Custom :"
+  echo -e " ${d}:1-65535@${user}:${pass}"
+  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  echo -e " Payload (WS) :"
+  echo -e " GET / HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]"
+  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  echo -e " OVPN TCP     : https://${d}/risqinf/openvpn/tcp.ovpn"
+  echo -e " OVPN UDP     : https://${d}/risqinf/openvpn/udp.ovpn"
+  echo -e " OVPN Bundle  : https://${d}/risqinf/openvpn/"
+  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+}
+
+# Full SSH account detail as Telegram HTML. Args: user pass ip_disp exp_disp [title]
+ssh_tg_text() {
+  local user="$1" pass="$2" ip_disp="$3" exp_disp="$4" title="${5:-SSH ACCOUNT}"
+  local d; d=$(get_domain); local sip; sip=$(get_ip)
+  cat <<EOF
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>      ⊹ ${title} ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Username  :</b> <code>${user}</code>
+<b>Password  :</b> <code>${pass}</code>
+<b>Host/IP   :</b> <code>${d}</code> / <code>${sip}</code>
+<b>Limit IP  :</b> <code>${ip_disp}</code>
+<b>Expired   :</b> <code>${exp_disp}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Port OpenSSH :</b> <code>22, 109</code>
+<b>Port WS HTTP :</b> <code>80, 8888</code>
+<b>Port WS TLS  :</b> <code>443</code>
+<b>Port BadVPN  :</b> <code>7300</code>
+<b>Port OpenVPN :</b> <code>1194 (TCP), 2200 (UDP)</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Config HTTP Custom :</b>
+<code>${d}:1-65535@${user}:${pass}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Payload :</b>
+<code>GET / HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>OVPN TCP :</b> <code>https://${d}/risqinf/openvpn/tcp.ovpn</code>
+<b>OVPN UDP :</b> <code>https://${d}/risqinf/openvpn/udp.ovpn</code>
+<b>OVPN Dir :</b> <code>https://${d}/risqinf/openvpn/</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+EOF
+}

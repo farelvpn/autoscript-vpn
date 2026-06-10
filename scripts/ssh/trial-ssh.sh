@@ -33,38 +33,11 @@ db_insert_account "ssh" "$user" "$pass" 0 "$limit_ip" "$exp_epoch"
 db_audit "create" "ssh" "$user" "trial ${duration}"
 
 exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
+[[ "$limit_ip" == "0" ]] && ip_disp="Unlimited" || ip_disp="$limit_ip"
 
-TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>     ⊹ SSH TRIAL ACCOUNT ⊹</b>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Username  :</b> <code>${user}</code>
-<b>Password  :</b> <code>${pass}</code>
-<b>Host/IP   :</b> <code>${domain}</code> / <code>${ip}</code>
-<b>Limit IP  :</b> <code>${limit_ip}</code>
-<b>Expired   :</b> <code>${exp_disp}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Port OpenSSH :</b> <code>22, 109</code>
-<b>Port WS HTTP :</b> <code>80, 8888</code>
-<b>Port WS TLS  :</b> <code>443</code>
-<b>Port BadVPN  :</b> <code>7300</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Config HTTP Custom :</b>
-<code>${domain}:1-65535@${user}:${pass}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
-tg_send "$TEKS"
+tg_send "$(ssh_tg_text "$user" "$pass" "$ip_disp" "$exp_disp" "SSH TRIAL ACCOUNT")"
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;42;30m                  SSH TRIAL CREATED                         \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Username     : ${user}"
-echo -e " Password     : ${pass}"
-echo -e " Host/IP      : ${domain} / ${ip}"
-echo -e " Limit IP     : ${limit_ip}"
-echo -e " Expired      : ${exp_disp}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Config HTTP Custom :"
-echo -e " ${domain}:1-65535@${user}:${pass}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ssh_print_cli "$user" "$pass" "$ip_disp" "$exp_disp" "SSH TRIAL CREATED"
 read -n 1 -s -r -p " Press any key to back to menu..."
 menu

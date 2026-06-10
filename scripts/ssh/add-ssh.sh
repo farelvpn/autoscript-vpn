@@ -41,53 +41,9 @@ exp_epoch=$(db_get_field "ssh" "$user" "expired_at")
 exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 [[ "$limit_ip" == "0" ]] && ip_disp="Unlimited" || ip_disp="$limit_ip"
 
-TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>       ⊹ SSH ACCOUNT ⊹</b>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Username  :</b> <code>${user}</code>
-<b>Password  :</b> <code>${pass}</code>
-<b>Host/IP   :</b> <code>${domain}</code> / <code>${ip}</code>
-<b>Limit IP  :</b> <code>${ip_disp}</code>
-<b>Expired   :</b> <code>${exp_disp}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Port OpenSSH :</b> <code>22, 109</code>
-<b>Port WS HTTP :</b> <code>80, 8888</code>
-<b>Port WS TLS  :</b> <code>443</code>
-<b>Port BadVPN  :</b> <code>7300</code>
-<b>Port OpenVPN :</b> <code>1194 (TCP), 2200 (UDP)</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Config HTTP Custom :</b>
-<code>${domain}:1-65535@${user}:${pass}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Payload :</b>
-<code>GET / HTTP/1.1[crlf]Host: ${domain}[crlf]Upgrade: websocket[crlf][crlf]</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>OVPN TCP :</b> <code>https://${domain}/risqinf/openvpn/tcp.ovpn</code>
-<b>OVPN UDP :</b> <code>https://${domain}/risqinf/openvpn/udp.ovpn</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
-tg_send "$TEKS"
+tg_send "$(ssh_tg_text "$user" "$pass" "$ip_disp" "$exp_disp" "SSH ACCOUNT")"
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;42;30m                  SSH ACCOUNT CREATED                       \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Username     : ${user}"
-echo -e " Password     : ${pass}"
-echo -e " Host/IP      : ${domain} / ${ip}"
-echo -e " Limit IP     : ${ip_disp}"
-echo -e " Expired      : ${exp_disp}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Port OpenSSH : 22, 109"
-echo -e " Port WS HTTP : 80, 8888"
-echo -e " Port WS TLS  : 443"
-echo -e " Port BadVPN  : 7300"
-echo -e " Port OpenVPN : 1194 (TCP) / 2200 (UDP)"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Config HTTP Custom :"
-echo -e " ${domain}:1-65535@${user}:${pass}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Payload :"
-echo -e " GET / HTTP/1.1[crlf]Host: ${domain}[crlf]Upgrade: websocket[crlf][crlf]"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ssh_print_cli "$user" "$pass" "$ip_disp" "$exp_disp" "SSH ACCOUNT CREATED"
 read -n 1 -s -r -p " Press any key to back to menu..."
 menu

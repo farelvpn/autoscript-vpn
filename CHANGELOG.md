@@ -21,6 +21,13 @@ and resource-tuning improvements from live VPS testing.
 - Grouped main menu (Account Panels / Tools / Server) plus a new `menu-system`
   submenu (domain+SSL, DNS, stream check, speedtest, Xray/Dropbear version,
   timezone, uninstall); `change-dns` extracted as a standalone command.
+- Consistent UI across all menus (uniform boxed headers/separators via
+  `ui_header`/`ui_sep`/`ui_foot`, shared colors) with a `0`/`x` back-to-menu
+  shortcut everywhere.
+- Login checker (cek-vless/vmess/trojan) redesigned: per-account boxed output
+  showing IP usage vs limit, quota used vs limit, and expiry. IP counting now
+  uses only the most-recent login window so a single client that
+  reconnected/disconnected is no longer counted multiple times.
 
 ### Changed
 - `rsyslog` is installed and `authpriv` routed to `/var/log/secure`; Dropbear
@@ -44,6 +51,11 @@ and resource-tuning improvements from live VPS testing.
   payload; now complete and consistent across all SSH actions and `cek-user`.
 - Removed the duplicate "Change Domain" main-menu entry (domain change lives
   under System → Change Domain / Renew SSL).
+- vnStat daemon is enabled/started at install so the bandwidth panel works
+  (fixes "Failed to open database /var/lib/vnstat/vnstat.db"); menu reads of
+  vnstat are error-suppressed.
+- Rewrote `menu-backup` (was a broken inline `menu()`/`backup`/`restore` that
+  shadowed the global menu) to call the real `backup`/`restore` commands.
 - Nginx `worker_connections` no longer fixed at 1048576 (RAM-aware now);
   removed an install-time `stress-ng` 1 GB allocation that could OOM small VPS.
 

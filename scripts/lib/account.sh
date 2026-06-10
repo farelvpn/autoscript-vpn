@@ -187,3 +187,80 @@ ssh_tg_text() {
 <b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
 EOF
 }
+
+# ---- XRAY LOGIN MONITOR (shared by cek-vless/vmess/trojan) ----
+# Human-readable bytes.
+human_bytes() {
+  local b="${1:-0}" u=(B KB MB GB TB) i=0
+  while (( b >= 1024 && i < 4 )); do b=$(( b / 1024 )); ((i++)); done
+  echo "${b} ${u[$i]}"
+}
+
+# Boxed per-account login monitor for an xray protocol.
+# Counts only IPs seen in the most recent login window (last RECENT_SECS) so a
+# single client that reconnected several times is not counted multiple times.
+# Arg: protocol (vless|vmess|trojan)
+xray_cek_monitor() {
+  local proto="$1"
+  local LOG="/var/log/xray/access.log"
+  local RECENT_SECS=120          # only connections within the last 2 minutes
+  local now_epoch; now_epoch=$(date +%s)
+
+  clear
+  ui_header "${proto^^} LOGIN MONITOR"
+  echo ""
+
+  local any=0
+  while IFS='|' read -r user limit qb used exp; do
+    [[ -z "$user" ]] && continue
+
+    # Distinct client IPs from RECENT accepted log lines for this user.
+    # Xray access log line: "2026/06/10 07:45:59 1.2.3.4:1234 accepted ... email: user"
+    local ips
+    ips=$(awk -v u="email: ${user}" -v now="$now_epoch" -v win="$RECENT_SECS" '
+      index($0, u) && /accepted/ {
+        # $1=date(YYYY/MM/DD) $2=time(HH:MM:SS) $3=src(ip:port)
+        ts=$1" "$2; gsub("/","-",ts);
+        cmd="date -d \""ts"\" +%s 2>/dev/null"; cmd | getline e; close(cmd);
+        if (e == "" ) next;
+        if (now - e <= win) {
+          ip=$3; sub(/:[0-9]+$/,"",ip);
+          if (ip != "") seen[ip]=1
+        }
+      }
+      END { for (k in seen) print k }
+    ' "$LOG" 2>/dev/null | sort -u)
+
+    local cnt=0
+    [[ -n "$ips" ]] && cnt=$(echo "$ips" | grep -c .)
+
+    # Display values.
+    local limd usedd quotad
+    [[ "$limit" == "0" ]] && limd="Unlimited" || limd="$limit"
+    usedd=$(human_bytes "${used:-0}")
+    if [[ "$qb" == "0" ]]; then quotad="Unlimited"; else quotad=$(human_bytes "$qb"); fi
+
+    any=1
+    ui_sep
+    printf " ${WHITE}%-12s${NC} : %s\n" "Username" "$user"
+    printf " ${WHITE}%-12s${NC} : %s / %s IP\n" "Login IP" "$cnt" "$limd"
+    printf " ${WHITE}%-12s${NC} : %s / %s\n" "Quota" "$usedd" "$quotad"
+    printf " ${WHITE}%-12s${NC} : %s\n" "Expired" "$exp"
+    if [[ -n "$ips" ]]; then
+      printf " ${WHITE}%-12s${NC} :\n" "Active IPs"
+      while read -r one; do [[ -n "$one" ]] && echo "                  - $one"; done <<< "$ips"
+    else
+      printf " ${WHITE}%-12s${NC} : %s\n" "Active IPs" "(none recently)"
+    fi
+    if [[ "$limd" != "Unlimited" && "$cnt" -gt "$limit" ]]; then
+      echo -e "                  ${RED}[!] EXCEEDS IP LIMIT${NC}"
+    fi
+  done < <(db_query "SELECT username, limit_ip, quota_bytes, used_bytes,
+                            datetime(expired_at,'unixepoch','localtime')
+                     FROM accounts WHERE protocol='${proto}' AND status='active'
+                     ORDER BY username;")
+
+  ui_sep
+  [[ $any -eq 0 ]] && echo -e " ${YELLOW}No active ${proto^^} accounts.${NC}"
+  ui_foot
+}

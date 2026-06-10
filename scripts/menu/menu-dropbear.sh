@@ -7,6 +7,7 @@
 clear
 BIBlack='\033[1;90m'
 BIGreen='\033[1;92m'
+BIRed='\033[1;91m'
 BIYellow='\033[1;93m'
 BIWhite='\033[1;97m'
 BILime='\e[38;5;155m'

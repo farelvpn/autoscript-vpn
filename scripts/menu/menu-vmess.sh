@@ -1,31 +1,24 @@
 #!/usr/bin/env bash
 # ========================================================
 # Project: Autoscript VPN by risqinf
-# Description: AutoScript VPN & Tunneling Management System
-# Developed for Rocky Linux 9
+# Description: VMESS management submenu
+# License: Apache License 2.0 (see LICENSE file)
+# Repository: https://github.com/risqinf/autoscript
 # ========================================================
+[[ -f /usr/local/sbin/lib/common.sh ]] && . /usr/local/sbin/lib/common.sh
 
 menu_vmess() {
     clear
-    echo -e "════════════════════════════════════════" 
-    echo -e "         ═══[ Vmess MENU ]═══"
-    echo -e "════════════════════════════════════════" 
-    echo -e " 1)  Create Account Vmess"
-    echo -e " 2)  Trial Account Vmess"
-    echo -e " 3)  Delete Account Vmess"
-    echo -e " 4)  Renew Account Vmess"
-    echo -e " 5)  Cek User Login Vmess"
-    echo -e " 6)  List All Vmess Accounts"
-    echo -e " 7)  Cek Config Account Vmess"
-    echo -e " 8)  Recovery Account Vmess"
-    echo -e "════════════════════════════════════════" 
-    echo -e " x)  MAIN MENU"
-    echo -e "════════════════════════════════════════" 
-    echo -e ""
-    read -p " Please select an option [1-9 or x]: " menu
-    echo -e ""
-    
-    case $menu in
+    ui_header "VMESS MENU"
+    echo -e " 1)  Create Account            5)  Check Login (live)"
+    echo -e " 2)  Trial Account             6)  List Accounts"
+    echo -e " 3)  Delete Account            7)  Check Config / Details"
+    echo -e " 4)  Renew Account             8)  Recovery Account"
+    ui_foot
+    echo -e " 0)  Back to Main Menu"
+    ui_foot
+    read -rp " Select option : " opt
+    case "$opt" in
         1) add-vmess ;;
         2) trial-vmess ;;
         3) delete-vmess ;;
@@ -34,12 +27,8 @@ menu_vmess() {
         6) list-vmess ;;
         7) config-vmess ;;
         8) recovery-vmess ;;
-        x) menu ;;
-        *) 
-            echo -e "\e[31mInvalid option! Please try again.\e[0m"
-            sleep 1
-            menu_vmess
-            ;;
+        0|x|X) menu ;;
+        *) err "Invalid option."; sleep 1; menu_vmess ;;
     esac
 }
 

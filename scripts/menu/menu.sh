@@ -71,9 +71,9 @@ run_cc() {
 # --- Bandwidth Usage (vnstat) ---
 read_vnstat_usage() {
   local interface=$1
-  local today=$(vnstat -i "$interface" | grep "today" | awk '{print $8" "$9}')
-  local yesterday=$(vnstat -i "$interface" | grep "yesterday" | awk '{print $8" "$9}')
-  local this_month=$(vnstat -i "$interface" -m | grep "$(date +"%b '%y")" | awk '{print $9" "$10}')
+  local today=$(vnstat -i "$interface" 2>/dev/null | grep "today" | awk '{print $8" "$9}')
+  local yesterday=$(vnstat -i "$interface" 2>/dev/null | grep "yesterday" | awk '{print $8" "$9}')
+  local this_month=$(vnstat -i "$interface" -m 2>/dev/null | grep "$(date +"%b '%y")" | awk '{print $9" "$10}')
   echo "$today;$yesterday;$this_month"
 }
 

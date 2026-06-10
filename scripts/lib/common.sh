@@ -34,6 +34,21 @@ info()  { echo -e "${BLUE}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# --- Consistent UI primitives (used by every menu/script) ---
+# Centered title bar in a uniform box. Arg: title text.
+ui_header() {
+  local t="$1" w=58
+  local pad=$(( (w - ${#t}) / 2 ))
+  (( pad < 0 )) && pad=0
+  echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+  printf "${CYAN}║${WHITE}%*s%s%*s${CYAN}║${NC}\n" "$pad" "" "$t" "$(( w - pad - ${#t} ))" ""
+  echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+}
+ui_sep()  { echo -e "${CYAN}────────────────────────────────────────────────────────────${NC}"; }
+ui_foot() { echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"; }
+# Standard "back to menu" prompt used everywhere.
+ui_back() { echo ""; read -n 1 -s -r -p " Press any key to return..."; }
+
 # --- Domain / IP ---
 get_domain() { cat "$AS_DOMAIN_FILE" 2>/dev/null || echo "not set"; }
 get_ip() {

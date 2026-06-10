@@ -160,6 +160,10 @@ dnf makecache >/dev/null 2>&1
 print_info "Installing core dependencies..."
 dnf install wget curl openssl sudo binutils coreutils gnupg2 bc vnstat htop lsof jq sqlite tar gzip python3 ruby rubygems -y >/dev/null 2>&1
 gem install lolcat >/dev/null 2>&1
+# Start the vnStat daemon so its database is created (the menu reads bandwidth
+# via vnstat; without the daemon it errors "Failed to open database").
+systemctl enable vnstat --now >/dev/null 2>&1
+systemctl restart vnstat >/dev/null 2>&1
 print_success "Core packages installed."
 
 # Fix DNS

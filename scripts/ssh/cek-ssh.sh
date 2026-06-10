@@ -86,11 +86,8 @@ if [[ -f "$WSLOG" ]]; then
 fi
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;42;30m                       SSH LIVE SESSION MONITOR                    \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-printf " ${WHITE}%-14s %-17s %-7s %-9s %-9s %-9s${NC}\n" "USERNAME" "CLIENT IP" "UPTIME" "TX" "RX" "TOTAL"
-echo -e "\033[0;34m───────────────────────────────────────────────────────────────────\e[0m"
+ui_header "SSH LIVE SESSION MONITOR"
+echo ""
 
 declare -A USER_SESS
 total_live=0
@@ -98,33 +95,37 @@ total_live=0
 # Iterate live proxy-ports (authoritative liveness), correlate to user + bandwidth.
 for pport in "${!LIVEPORT[@]}"; do
   user="${PORT2USER[$pport]}"
-  [[ -z "$user" ]] && user="detecting"
+  [[ -z "$user" ]] && user="detecting..."
   cip="${S_CIP[$pport]:-?}"; cip="${cip%%:*}"
   up="${S_UP[$pport]:-?}"
   tx="${S_TX[$pport]:--}"; rx="${S_RX[$pport]:--}"; tot="${S_TOT[$pport]:--}"
   USER_SESS[$user]=$(( ${USER_SESS[$user]:-0} + 1 ))
   total_live=$((total_live+1))
-  printf " %-14s %-17s %-7s %-9s %-9s %-9s\n" \
-    "$user" "$cip" "$up" "$tx" "$rx" "$tot"
+  ui_sep
+  printf " ${WHITE}%-12s${NC} : %s\n" "Username" "$user"
+  printf " ${WHITE}%-12s${NC} : %s\n" "Client IP" "$cip"
+  printf " ${WHITE}%-12s${NC} : %s\n" "Uptime" "$up"
+  printf " ${WHITE}%-12s${NC} : TX %s | RX %s | Total %s\n" "Bandwidth" "$tx" "$rx" "$tot"
 done
 
 if [[ $total_live -eq 0 ]]; then
+  ui_sep
   echo -e " ${YELLOW}No active SSH sessions.${NC}"
 fi
 
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_sep
 echo -e " ${WHITE}PER-USER SESSIONS (vs IP limit)${NC}"
-echo -e "\033[0;34m───────────────────────────────────────────────────────────────────\e[0m"
+ui_sep
 while IFS='|' read -r u limit; do
   [[ -z "$u" ]] && continue
   cnt=${USER_SESS[$u]:-0}
-  [[ "$limit" == "0" ]] && limit="∞"
+  [[ "$limit" == "0" ]] && limit="Unlimited"
   mark=""
-  [[ "$limit" != "∞" && "$cnt" -gt "$limit" ]] && mark="  ${RED}[OVER LIMIT]${NC}"
+  [[ "$limit" != "Unlimited" && "$cnt" -gt "$limit" ]] && mark="  ${RED}[OVER LIMIT]${NC}"
   printf " %-14s %s/%s%b\n" "$u" "$cnt" "$limit" "$mark"
 done < <(db_query "SELECT username, limit_ip FROM accounts WHERE protocol='ssh' AND status='active' ORDER BY username;")
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e " Total live sessions: ${GREEN}${total_live}${NC}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-read -n 1 -s -r -p " Press any key to back to menu..."
+ui_sep
+echo -e " Total live sessions : ${GREEN}${total_live}${NC}"
+ui_foot
+ui_back
 menu

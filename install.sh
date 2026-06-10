@@ -796,6 +796,24 @@ upstream trojan_ws {
     keepalive 32;
 }
 
+# Proper Connection header for WebSocket upgrades.
+map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# Root-path discriminator. A genuine WebSocket handshake (vmess/v2ray client)
+# always carries a "Sec-WebSocket-Key" header. SSH-WS injector payloads send a
+# bare "GET / HTTP/1.1" with only an Upgrade line and no Sec-WebSocket-Key, so
+# they must NOT be sent to the vmess inbound (which answered 400
+# "unsupported Sec-WebSocket-Version"). Route by that header instead.
+# NOTE: an IP:port literal is used (not the upstream name) because a variable
+# in proxy_pass would otherwise require a DNS resolver.
+map \$http_sec_websocket_key \$root_upstream {
+    default  127.0.0.1:8888;   # no Sec-WebSocket-Key  -> SSH-WS
+    "~.+"    127.0.0.1:3;       # has Sec-WebSocket-Key -> VMESS inbound
+}
+
 server {
     listen 127.0.0.1:81 default_server proxy_protocol;
     listen 127.0.0.1:444 ssl http2 default_server proxy_protocol;
@@ -807,49 +825,77 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
-    # VMESS multipath: any path that is not vless/trojan/ssh is rewritten to
-    # "/" and forwarded to the vmess inbound (which listens on path "/").
-    location / {
-        rewrite ^.*\$ / break;
-        proxy_pass http://vmess_ws;
+    # Explicit protocol paths. Each uses a static proxy_pass (no variables) so
+    # nginx resolves the upstream block directly (a variable in proxy_pass would
+    # bypass the upstream and require a DNS resolver).
+    location /vless {
+        proxy_pass http://vless_ws;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection \$connection_upgrade;
         proxy_set_header Host \$http_host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 7d;
+        proxy_send_timeout 7d;
         proxy_buffering off;
-        error_page 400 403 500 502 503 504 = @ssh_ws;
     }
 
-    location @ssh_ws {
+    location /trojan {
+        proxy_pass http://trojan_ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 7d;
+        proxy_send_timeout 7d;
+        proxy_buffering off;
+    }
+
+    # Explicit SSH-WS path (always forced to the ssh-ws proxy).
+    location /ssh {
         proxy_pass http://ssh_ws;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection \$connection_upgrade;
         proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 7d;
+        proxy_send_timeout 7d;
         proxy_buffering off;
     }
 
-    location ~ /(vless|trojan|ssh) {
-        proxy_pass http://\$1_ws;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_buffering off;
-    }
-
+    # OpenVPN client config downloads.
     location /risqinf/ {
         alias /var/www/html/risqinf/;
         autoindex on;
     }
 
+    # Future REST API (server not yet shipped).
     location /api/ {
         proxy_pass http://127.0.0.1:9000/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+
+    # VMESS multipath (any other path) OR SSH-WS, decided by the handshake.
+    # Any non-protocol path is rewritten to "/" for the vmess inbound.
+    location / {
+        rewrite ^.*\$ / break;
+        proxy_pass http://\$root_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 7d;
+        proxy_send_timeout 7d;
+        proxy_buffering off;
     }
 }
 EOF

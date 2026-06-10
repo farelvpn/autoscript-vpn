@@ -9,6 +9,15 @@ Developed for **Rocky Linux 9**. Builds on 0.1.0-beta with output, logging,
 and resource-tuning improvements from live VPS testing.
 
 ### Added
+- Telegram setup menu (`set-telegram`, under System): configure the bot token
+  and admin chat id from the panel, send a test message, or clear the config.
+  Previously these had to be created by hand at `/etc/xray/{bot.key,client.id}`.
+- Full service-status overview (`status`, under System): lists every installed
+  component (HAProxy, Nginx, Xray, Dropbear, ssh-ws, OpenSSH, OpenVPN, vnStat,
+  rsyslog, cron, firewalld, quota/ip-limit loops) with colored ON/OFF and ports.
+- SSH tunnel stack badge on the main menu and status page is now 3-state:
+  green when both Dropbear and ssh-ws are up, yellow when only one is up,
+  red when both are down.
 - SSH-over-WebSocket via GO-TUNNEL PRO (risqinf/websocket-proxy) static Go
   binary, tuned for Rocky Linux 9; provides UDPGW on `7300` and a localhost
   monitoring API on `8081`.
@@ -43,6 +52,24 @@ and resource-tuning improvements from live VPS testing.
   resource limits, `Nice=-10`); removes any unit created by the XTLS installer.
 
 ### Fixed
+- SSH-over-WebSocket "400 Bad Request" with Xray logging
+  `unsupported version: 13 not found in 'Sec-Websocket-Version'`: SSH-WS
+  payloads use path `/` (same as VMESS multipath) but are not real WebSocket
+  handshakes, so they were hitting the VMESS inbound and being rejected. Nginx
+  now discriminates at `/` by the `Sec-WebSocket-Key` header (present only on
+  genuine WS clients): with the header -> VMESS inbound, without it -> ssh-ws.
+  An explicit `/ssh` path is also provided and is the recommended payload.
+  Proxy locations now send the correct `Connection: upgrade` mapping and long
+  read/send timeouts so tunnels stay open.
+- Uninstaller now removes the SSH system users it created (`userdel --force`,
+  killing their sessions first), reading the username list from the database
+  before it is deleted so only script-created accounts are touched.
+- Adaptive UI: boxes/headers/rules now detect terminal width and clamp to a
+  readable range, so menus stay tidy on small phone terminals (Termux/PuTTY)
+  and don't wrap. All box-drawing/decorative glyphs replaced with ASCII so
+  they render correctly on every terminal and codepage.
+- Main-menu colors: define the previously-undefined `PURPLE`/`LIGHT` (and
+  `YELLOW`/`WHITE`) so the header and labels are colored.
 - SSH login "incorrect username or password": register `/usr/sbin/nologin`
   in `/etc/shells` (PAM `pam_shells`).
 - OpenVPN download links 404: Nginx `/risqinf/` alias now points to

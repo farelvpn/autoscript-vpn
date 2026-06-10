@@ -30,7 +30,7 @@ if [[ "$confirm" != "yes" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-echo "[1/8] Stopping and disabling services..."
+echo "[1/9] Stopping and disabling services..."
 SERVICES=(
     haproxy xray nginx dropbear ssh-ws server
     quota limit-ip-vless quota-trojan limit-ip-trojan quota-vmess limit-ip-vmess
@@ -42,7 +42,7 @@ for svc in "${SERVICES[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
-echo "[2/8] Removing systemd unit files..."
+echo "[2/9] Removing systemd unit files..."
 rm -f /etc/systemd/system/xray.service
 rm -f /etc/systemd/system/ssh-ws.service
 rm -f /etc/systemd/system/server.service
@@ -56,7 +56,7 @@ rm -f /etc/systemd/system/limit-ip-vmess.service
 systemctl daemon-reload
 
 # ---------------------------------------------------------------------------
-echo "[3/8] Removing binaries and runtime files..."
+echo "[3/9] Removing binaries and runtime files..."
 rm -f /usr/local/bin/xray
 rm -f /usr/local/bin/server
 rm -f /usr/local/bin/ssh-ws
@@ -66,7 +66,7 @@ rm -f /etc/rsyslog.d/00-autoscript-secure.conf
 systemctl restart rsyslog 2>/dev/null
 
 # ---------------------------------------------------------------------------
-echo "[4/8] Removing management scripts, libraries, and API handlers..."
+echo "[4/9] Removing management scripts, libraries, and API handlers..."
 rm -rf /usr/local/sbin/api
 rm -rf /usr/local/sbin/lib
 rm -f /usr/local/sbin/db-migrate
@@ -84,12 +84,32 @@ for cmd in menu menu-ssh menu-vless menu-vmess menu-trojan menu-host menu-backup
     loop-quota-vless loop-quota-vmess loop-quota-trojan \
     quota-vless quota-vmess quota-trojan \
     xp-ssh xp-vless xp-vmess xp-trojan \
-    backup restore fixlog versi-xray stream-check change-domain change-dns change-timezone uninstall; do
+    backup restore fixlog versi-xray stream-check change-domain change-dns change-timezone status set-telegram uninstall; do
     rm -f "/usr/local/sbin/$cmd"
 done
 
 # ---------------------------------------------------------------------------
-echo "[5/8] Removing configs, database, and web/log directories..."
+echo "[5/9] Removing SSH system users created by the script..."
+# SSH accounts are real system users (useradd). Remove them with userdel
+# --force BEFORE deleting the database (the DB is our list of who we created),
+# so we never touch unrelated/system accounts.
+if [[ -f /etc/xray/xray.db ]] && command -v sqlite3 >/dev/null 2>&1; then
+    mapfile -t _ssh_users < <(sqlite3 /etc/xray/xray.db \
+        "SELECT username FROM accounts WHERE protocol='ssh';" 2>/dev/null | sort -u)
+    for u in "${_ssh_users[@]}"; do
+        [[ -z "$u" ]] && continue
+        if id "$u" &>/dev/null; then
+            pkill -KILL -u "$u" 2>/dev/null
+            userdel --force "$u" >/dev/null 2>&1 && echo "  - removed user: $u"
+        fi
+    done
+    [[ ${#_ssh_users[@]} -eq 0 ]] && echo "  (no SSH users recorded in database)"
+else
+    echo "  (database not found; skipping user removal)"
+fi
+
+# ---------------------------------------------------------------------------
+echo "[6/9] Removing configs, database, and web/log directories..."
 rm -rf /etc/xray                       # config.json, xray.db, domain, keys, backup.pass
 rm -f  /etc/nginx/risqinf.conf
 rm -rf /etc/dropbear
@@ -98,7 +118,7 @@ rm -rf /var/www/html/risqinf
 rm -rf /var/log/xray
 
 # ---------------------------------------------------------------------------
-echo "[6/8] Cleaning up crontab and login profile..."
+echo "[7/9] Cleaning up crontab and login profile..."
 for pat in xp-ssh xp-vless xp-vmess xp-trojan limit-ip-ssh backup fixlog cek-; do
     sed -i "/ $pat/d" /etc/crontab 2>/dev/null
 done
@@ -107,7 +127,7 @@ systemctl restart crond 2>/dev/null
 [[ -f /root/.profile ]] && grep -q "menu" /root/.profile && : > /root/.profile
 
 # ---------------------------------------------------------------------------
-echo "[7/8] Optional: remove swap file created by the installer..."
+echo "[8/9] Optional: remove swap file created by the installer..."
 if [[ -f /swapfile ]]; then
     read -rp "Remove /swapfile too? (y/N): " rmswap
     if [[ "$rmswap" =~ ^[Yy]$ ]]; then
@@ -119,7 +139,7 @@ if [[ -f /swapfile ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-echo "[8/8] Removing packages (best effort)..."
+echo "[9/9] Removing packages (best effort)..."
 dnf remove haproxy nginx dropbear openvpn easy-rsa -y >/dev/null 2>&1
 
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"

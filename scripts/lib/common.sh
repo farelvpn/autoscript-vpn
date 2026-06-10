@@ -28,26 +28,64 @@ export BLUE='\033[0;34m'
 export CYAN='\033[0;36m'
 export WHITE='\033[1;37m'
 
-line() { echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"; }
+# --- Adaptive width (tidy on small phone terminals: Termux/PuTTY) ---
+# Detects the real terminal width and clamps it to a readable range so boxes
+# never wrap on narrow screens nor stretch too wide on desktops.
+ui_width() {
+  local c
+  c=$(tput cols 2>/dev/null)
+  [[ "$c" =~ ^[0-9]+$ ]] || c="${COLUMNS:-56}"
+  (( c < 30 )) && c=30
+  (( c > 56 )) && c=56
+  echo "$c"
+}
+# Repeat a character N times (portable, no seq/printf-pattern surprises).
+ui_rep() { local ch="$1" n="$2" out=""; while (( n > 0 )); do out+="$ch"; ((n--)); done; printf '%s' "$out"; }
+
+# ASCII-safe rule line (renders identically on every terminal/codepage).
+line() { echo -e "${CYAN}$(ui_rep '=' "$(ui_width)")${NC}"; }
 ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 info()  { echo -e "${BLUE}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # --- Consistent UI primitives (used by every menu/script) ---
-# Centered title bar in a uniform box. Arg: title text.
+# Centered title in a uniform, width-adaptive box. Arg: title text.
 ui_header() {
-  local t="$1" w=58
-  local pad=$(( (w - ${#t}) / 2 ))
-  (( pad < 0 )) && pad=0
-  echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-  printf "${CYAN}║${WHITE}%*s%s%*s${CYAN}║${NC}\n" "$pad" "" "$t" "$(( w - pad - ${#t} ))" ""
-  echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+  local t="$1" w; w=$(ui_width)
+  local inner=$(( w - 2 ))
+  (( ${#t} > inner )) && t="${t:0:inner}"
+  local pad=$(( (inner - ${#t}) / 2 )); (( pad < 0 )) && pad=0
+  local rpad=$(( inner - pad - ${#t} )); (( rpad < 0 )) && rpad=0
+  echo -e "${CYAN}+$(ui_rep '-' "$inner")+${NC}"
+  printf "${CYAN}|${WHITE}%*s%s%*s${CYAN}|${NC}\n" "$pad" "" "$t" "$rpad" ""
+  echo -e "${CYAN}+$(ui_rep '-' "$inner")+${NC}"
 }
-ui_sep()  { echo -e "${CYAN}────────────────────────────────────────────────────────────${NC}"; }
-ui_foot() { echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"; }
+ui_sep()  { echo -e "${CYAN}$(ui_rep '-' "$(ui_width)")${NC}"; }
+ui_foot() { echo -e "${CYAN}$(ui_rep '=' "$(ui_width)")${NC}"; }
 # Standard "back to menu" prompt used everywhere.
 ui_back() { echo ""; read -n 1 -s -r -p " Press any key to return..."; }
+
+# --- Service status helpers (used by menu + status checker) ---
+# Returns 0 if the unit is active.
+svc_active() { systemctl is-active --quiet "$1" 2>/dev/null; }
+# Colored ON/OFF badge for a single unit. Arg: unit name.
+svc_badge() {
+  if svc_active "$1"; then echo -e "${GREEN}ON${NC}"; else echo -e "${RED}OFF${NC}"; fi
+}
+# Combined SSH tunnel badge (dropbear + ssh-ws). 3 states:
+#   both up   -> green ON
+#   one up    -> yellow WARN
+#   none up   -> red OFF
+ssh_stack_badge() {
+  local a=0 b=0
+  svc_active dropbear && a=1
+  svc_active ssh-ws  && b=1
+  if   (( a==1 && b==1 )); then echo -e "${GREEN}ON${NC}"
+  elif (( a==1 || b==1 )); then echo -e "${YELLOW}WARN${NC}"
+  else echo -e "${RED}OFF${NC}"
+  fi
+}
 
 # --- Domain / IP ---
 get_domain() { cat "$AS_DOMAIN_FILE" 2>/dev/null || echo "not set"; }
@@ -107,6 +145,10 @@ duration_to_seconds() {
 }
 
 # --- Telegram ---
+# Returns 0 if both bot token and chat id are configured.
+tg_is_configured() {
+  [[ -s "$AS_BOTKEY" && -s "$AS_CHATID" ]]
+}
 tg_send() {
   local text="$1"
   local token chat

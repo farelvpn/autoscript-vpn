@@ -10,10 +10,11 @@
 menu_system() {
     clear
     ui_header "SYSTEM MENU"
-    echo -e " 1)  Change Domain / Renew SSL   5)  Xray Core Version"
-    echo -e " 2)  Change DNS                  6)  Dropbear Version"
-    echo -e " 3)  Stream / Media Check        7)  Change Timezone"
-    echo -e " 4)  Speedtest                   8)  Uninstall Script"
+    echo -e " 1)  Change Domain / Renew SSL   6)  Dropbear Version"
+    echo -e " 2)  Change DNS                  7)  Change Timezone"
+    echo -e " 3)  Stream / Media Check        8)  Service Status"
+    echo -e " 4)  Speedtest                   9)  Telegram Setup"
+    echo -e " 5)  Xray Core Version          10)  Uninstall Script"
     ui_foot
     echo -e " 0)  Back to Main Menu"
     ui_foot
@@ -26,7 +27,9 @@ menu_system() {
         5) clear ; versi-xray ;;
         6) clear ; menu-dropbear ;;
         7) clear ; change-timezone ;;
-        8) clear ; uninstall ;;
+        8) clear ; status ;;
+        9) clear ; set-telegram ;;
+        10) clear ; uninstall ;;
         0|x|X) clear ; menu ;;
         *) err "Invalid option."; sleep 1; menu_system ;;
     esac

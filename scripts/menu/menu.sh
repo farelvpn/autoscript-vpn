@@ -142,21 +142,16 @@ vls=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='vless' AND status!
 vms=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='vmess' AND status!='deleted';" 2>/dev/null); vms=${vms:-0}
 tro=$(db_query "SELECT COUNT(*) FROM accounts WHERE protocol='trojan' AND status!='deleted';" 2>/dev/null); tro=${tro:-0}
 
-# --- SERVICE STATUS ---
-ressh="${RED}OFF${NC}"
-[[ $(systemctl is-active dropbear 2>/dev/null) == "active" ]] && ressh="${GREEN}ON${NC}"
-
-resngx="${RED}OFF${NC}"
-[[ $(systemctl is-active nginx 2>/dev/null) == "active" ]] && resngx="${GREEN}ON${NC}"
-
-resv2r="${RED}OFF${NC}"
-[[ $(systemctl is-active xray 2>/dev/null) == "active" ]] && resv2r="${GREEN}ON${NC}"
-
-reshap="${RED}OFF${NC}"
-[[ $(systemctl is-active haproxy 2>/dev/null) == "active" ]] && reshap="${GREEN}ON${NC}"
-
+# --- SERVICE STATUS (uses shared badges from common.sh) ---
+# SSH tunnel = dropbear + ssh-ws together (3-state: ON/WARN/OFF).
+ressshws=$(ssh_stack_badge)
+resngx=$(svc_badge nginx)
+resv2r=$(svc_badge xray)
+reshap=$(svc_badge haproxy)
 resovpn="${RED}OFF${NC}"
-[[ $(systemctl is-active openvpn-server@server-tcp-1194 2>/dev/null) == "active" ]] && resovpn="${GREEN}ON${NC}"
+{ [[ $(systemctl is-active openvpn-server@server-tcp-1194 2>/dev/null) == "active" ]] \
+  || [[ $(systemctl is-active openvpn-server@server-udp-2200 2>/dev/null) == "active" ]]; } \
+  && resovpn="${GREEN}ON${NC}"
 
 # --- SYSTEM INFO ---
 DOMAIN=$(cat /etc/xray/domain 2>/dev/null || echo "Not Set")
@@ -175,37 +170,37 @@ IPVPS=$(curl -s ifconfig.me 2>/dev/null || echo "N/A")
 
 # --- MAIN MENU ---
 clear
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${PURPLE}                ◎ ENTERPRISE VPN MANAGER ◎                  ${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-printf "${LIGHT}%-12s :${GREEN} %-30s${NC}\n" "OS" "$OS1"
-printf "${LIGHT}%-12s :${GREEN} %-30s${NC}\n" "IP VPS" "$IPVPS"
-printf "${LIGHT}%-12s :${GREEN} %-30s${NC}\n" "Uptime" "$up"
-printf "${LIGHT}%-12s :${GREEN} %-30s${NC}\n" "Domain" "$DOMAIN"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-printf "${LIGHT}%-12s :${GREEN} %-15s ${LIGHT}%-15s :${GREEN} %-10s${NC}\n" "RAM Usage" "$frem" "Total RAM" "$tram MB"
-printf "${LIGHT}%-12s :${GREEN} %-30s${NC}\n" "CPU Usage" "$cpu"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-printf "${LIGHT}%-12s :${BICyan} ${RED}%s${NC} | ${RED}%s${NC} | ${RED}%s${NC}\n" "Bandwidth" "$ttoday" "$tyest" "$tmon"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-printf "${LIGHT}%-12s : SSH(${GREEN}%s${NC}) | VLESS(${GREEN}%s${NC}) | VMESS(${GREEN}%s${NC}) | TROJAN(${GREEN}%s${NC})\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
-printf "${LIGHT}%-12s : DBear ($ressh) | OVPN ($resovpn) | Nginx ($resngx) | Xray ($resv2r)\n" "Services"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+ui_header "ENTERPRISE VPN MANAGER"
+printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "OS" "$OS1"
+printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "IP VPS" "$IPVPS"
+printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "Uptime" "$up"
+printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "Domain" "$DOMAIN"
+line
+printf "${LIGHT}%-10s :${GREEN} %s ${LIGHT}/ %s MB${NC}\n" "RAM" "$frem" "$tram"
+printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "CPU" "$cpu"
+line
+printf "${LIGHT}%-10s : ${RED}%s${NC} | ${RED}%s${NC} | ${RED}%s${NC}\n" "Bandwidth" "$ttoday" "$tyest" "$tmon"
+echo -e "${LIGHT}             (today | yesterday | month)${NC}"
+line
+printf "${LIGHT}%-10s : SSH ${GREEN}%s${NC} VLS ${GREEN}%s${NC} VMS ${GREEN}%s${NC} TRJ ${GREEN}%s${NC}\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
+printf "${LIGHT}%-10s : SSH+WS(${ressshws}${LIGHT}) OVPN(${resovpn}${LIGHT}) HAP(${reshap}${LIGHT})\n" "Services"
+printf "${LIGHT}%-10s : Nginx(${resngx}${LIGHT}) Xray(${resv2r}${LIGHT})\n" ""
+line
 echo -e "${WHITE}  ACCOUNT PANELS${NC}"
 echo -e " 1)  SSH / OpenVPN Panel        3)  VMESS Panel"
 echo -e " 2)  VLESS Panel                4)  TROJAN Panel"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+line
 echo -e "${WHITE}  TOOLS${NC}"
 echo -e " 5)  Auto Bulk Create           7)  User Checker"
 echo -e " 6)  Account Cleaner            8)  API Menu"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+line
 echo -e "${WHITE}  SERVER${NC}"
 echo -e " 9)  System Menu                10) Backup / Restore"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+line
 echo -e " x)  Exit"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+line
 printf "${LIGHT}XRAY Version : [ ${GREEN}%s ${LIGHT}]\n" "$xray_version"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+line
 
 # --- MENU SELECTION ---
 read -p " Select Option : " mm

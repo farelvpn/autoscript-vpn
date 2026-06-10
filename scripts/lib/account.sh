@@ -147,7 +147,7 @@ ssh_print_cli() {
   echo -e " ${d}:1-65535@${user}:${pass}"
   echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
   echo -e " Payload (WS) :"
-  echo -e " GET / HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]"
+  echo -e " GET /ssh HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]"
   echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
   echo -e " OVPN TCP     : https://${d}/risqinf/openvpn/tcp.ovpn"
   echo -e " OVPN UDP     : https://${d}/risqinf/openvpn/udp.ovpn"
@@ -179,7 +179,7 @@ ssh_tg_text() {
 <code>${d}:1-65535@${user}:${pass}</code>
 <b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
 <b>Payload :</b>
-<code>GET / HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]</code>
+<code>GET /ssh HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]</code>
 <b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
 <b>OVPN TCP :</b> <code>https://${d}/risqinf/openvpn/tcp.ovpn</code>
 <b>OVPN UDP :</b> <code>https://${d}/risqinf/openvpn/udp.ovpn</code>

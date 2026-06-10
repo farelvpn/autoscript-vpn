@@ -27,7 +27,7 @@ vmess_link() {
   local secret="$1" port="$2" tls="$3"
   jq -nc --arg ps "$user" --arg add "$domain" --arg port "$port" \
         --arg id "$secret" --arg host "$domain" --arg tls "$tls" \
-        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:"/vmess",type:"none",host:$host,tls:$tls}' \
+        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:"/",type:"none",host:$host,tls:$tls}' \
     | base64 -w 0 | sed 's/^/vmess:\/\//'
 }
 
@@ -58,7 +58,7 @@ while IFS='|' read -r proto secret iplim qb exp status; do
       ;;
     vmess)
       echo -e " UUID         : ${secret}      AlterId: 0"
-      echo -e " Network/Path : ws  /vmess     Port: 443 (TLS) / 80 (HTTP)"
+      echo -e " Network/Path : ws  / (multipath)   Port: 443 (TLS) / 80 (HTTP)"
       echo -e " Quota        : ${quota}     Limit IP : ${iplim}"
       echo -e " Expired      : ${exp}"
       echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"

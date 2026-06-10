@@ -14,7 +14,7 @@ vmess_link() {
   local port="$1" tls="$2"
   jq -nc --arg ps "$user" --arg add "$domain" --arg port "$port" \
         --arg id "$uuid" --arg host "$domain" --arg tls "$tls" \
-        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:"/vmess",type:"none",host:$host,tls:$tls}' \
+        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:"/",type:"none",host:$host,tls:$tls}' \
     | base64 -w 0 | sed 's/^/vmess:\/\//'
 }
 
@@ -51,7 +51,7 @@ echo -e " Host/IP      : ${domain}"
 echo -e " Port TLS     : 443      Port HTTP : 80"
 echo -e " UUID         : ${uuid}"
 echo -e " AlterId      : 0"
-echo -e " Network/Path : ws  /vmess"
+echo -e " Network/Path : ws  / (multipath)"
 echo -e " Quota        : ${quota}     Limit IP : ${ip}"
 echo -e " Expired      : ${exp}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"

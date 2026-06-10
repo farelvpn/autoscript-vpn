@@ -251,6 +251,9 @@ menu_install_logic() {
         install -m 0755 "$file" "/usr/local/sbin/api/$name"
     done
 
+    # Install the uninstaller as a callable command.
+    [[ -f "$srcdir/uninstall.sh" ]] && install -m 0755 "$srcdir/uninstall.sh" /usr/local/sbin/uninstall
+
     rm -rf "$tmpdir"
     print_success "Menu scripts and libraries integrated."
 }
@@ -587,7 +590,7 @@ xray_install_logic() {
       "streamSettings": {
         "network": "ws",
         "wsSettings": {
-          "path": "/vmess"
+          "path": "/"
         }
       }
     }
@@ -651,20 +654,44 @@ EOF
     chown -R root:root /var/log/xray
     chmod 644 /var/log/xray/*.log
 
+    # Remove any service unit the XTLS installer may have created, then write
+    # our own (xray run -config, with reload + resource limits).
+    rm -f /etc/systemd/system/xray.service /etc/systemd/system/xray@.service 2>/dev/null
+    rm -rf /etc/systemd/system/xray.service.d 2>/dev/null
+
     cat > /etc/systemd/system/xray.service <<EOF
 [Unit]
-Description=Xray Service by risqinf
+Description=Xray Service
+Documentation=https://github.com/XTLS/Xray-core
 After=network.target nss-lookup.target
 
 [Service]
+Type=simple
 User=root
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
-ExecStart=/usr/local/bin/xray -config /etc/xray/config.json
+ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
+ExecReload=/bin/kill -HUP \$MAINPID
 Restart=on-failure
-LimitNPROC=10000
-LimitNOFILE=1000000
+RestartSec=5s
+
+# Resource Limits
+LimitNOFILE=1048576
+LimitNPROC=1048576
+LimitCORE=infinity
+TasksMax=infinity
+
+# Network Tuning
+LimitMEMLOCK=infinity
+
+# Process Priority
+Nice=-10
+
+# Security
+PrivateTmp=true
+ProtectSystem=false
+ProtectHome=false
 
 [Install]
 WantedBy=multi-user.target
@@ -672,6 +699,7 @@ EOF
 
     systemctl daemon-reload
     systemctl enable xray --now >/dev/null 2>&1
+    systemctl restart xray >/dev/null 2>&1
     check_service xray
     print_success "Xray Core initialized."
 }
@@ -775,10 +803,10 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
+    # VMESS multipath: any path that is not vless/trojan/ssh is rewritten to
+    # "/" and forwarded to the vmess inbound (which listens on path "/").
     location / {
-        if (\$http_upgrade != "Websocket") {
-            rewrite /(.*) / break;
-        }
+        rewrite ^.*\$ / break;
         proxy_pass http://vmess_ws;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;

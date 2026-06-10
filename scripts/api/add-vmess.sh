@@ -38,7 +38,7 @@ esac
 
 exp_disp=$(date -d "@${exp_epoch}" +"%d-%m-%Y %H:%M:%S")
 link_tls=$(jq -nc --arg ps "$user" --arg add "$domain" --arg id "$uuid" \
-  '{v:"2",ps:$ps,add:$add,port:"443",id:$id,aid:"0",net:"ws",path:"/vmess",type:"none",host:$add,tls:"tls"}' \
+  '{v:"2",ps:$ps,add:$add,port:"443",id:$id,aid:"0",net:"ws",path:"/",type:"none",host:$add,tls:"tls"}' \
   | base64 -w 0 | sed 's/^/vmess:\/\//')
 
 jq -nc --arg u "$user" --arg id "$uuid" --arg d "$domain" --arg exp "$exp_disp" \

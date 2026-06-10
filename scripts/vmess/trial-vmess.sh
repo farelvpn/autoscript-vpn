@@ -15,7 +15,7 @@ vmess_link() {
   local port="$1" tls="$2"
   jq -nc --arg ps "$user" --arg add "$domain" --arg port "$port" \
         --arg id "$uuid" --arg host "$domain" --arg tls "$tls" \
-        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:"/vmess",type:"none",host:$host,tls:$tls}' \
+        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:"/",type:"none",host:$host,tls:$tls}' \
     | base64 -w 0 | sed 's/^/vmess:\/\//'
 }
 
@@ -46,7 +46,7 @@ TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━�
 <b>UUID      :</b> <code>${uuid}</code>
 <b>AlterId   :</b> <code>0</code>
 <b>Network   :</b> <code>ws</code>
-<b>Path      :</b> <code>/vmess</code>
+<b>Path      :</b> <code>/ (multipath)</code>
 <b>Quota     :</b> <code>10 GB</code>
 <b>Limit IP  :</b> <code>2</code>
 <b>Expired   :</b> <code>${exp_disp}</code>
@@ -66,7 +66,7 @@ echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━�
 echo -e " Remarks      : ${user}"
 echo -e " Host/IP      : ${domain}"
 echo -e " UUID         : ${uuid}"
-echo -e " Network/Path : ws  /vmess"
+echo -e " Network/Path : ws  / (multipath)"
 echo -e " Quota        : 10 GB     Limit IP : 2"
 echo -e " Expired      : ${exp_disp}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"

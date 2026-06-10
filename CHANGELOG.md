@@ -18,13 +18,22 @@ and resource-tuning improvements from live VPS testing.
   `fs.file-max`, swap size, and `vm.swappiness` scale to the machine.
 - Shared SSH display helpers so create/trial/view/checker all show the full
   detail block (ports, HTTP-custom config, WS payload, OpenVPN links).
+- Grouped main menu (Account Panels / Tools / Server) plus a new `menu-system`
+  submenu (domain+SSL, DNS, stream check, speedtest, Xray/Dropbear version,
+  timezone, uninstall); `change-dns` extracted as a standalone command.
 
 ### Changed
 - `rsyslog` is installed and `authpriv` routed to `/var/log/secure`; Dropbear
   logs via syslog (dropped `-E`) so logins are visible there.
 - SSH IP-limit counts only currently-live sessions (via `ss` + proxy-port).
 - Uninstaller rewritten in clear numbered steps; covers every installed
-  artifact and offers optional swap removal.
+  artifact and offers optional swap removal; installed as the `uninstall`
+  command.
+- VMESS now uses true multipath: Xray vmess inbound listens on path `/`,
+  Nginx rewrites any non-vless/trojan/ssh path to `/`, and all VMESS links
+  advertise path `/`.
+- Rewrote `xray.service` (uses `xray run -config`, `ExecReload`, higher
+  resource limits, `Nice=-10`); removes any unit created by the XTLS installer.
 
 ### Fixed
 - SSH login "incorrect username or password": register `/usr/sbin/nologin`
@@ -33,6 +42,8 @@ and resource-tuning improvements from live VPS testing.
   `/var/www/html/risqinf/` (matching where the `.ovpn` files are written).
 - CLI output for SSH create/trial/view was missing OpenVPN links and the WS
   payload; now complete and consistent across all SSH actions and `cek-user`.
+- Removed the duplicate "Change Domain" main-menu entry (domain change lives
+  under System → Change Domain / Renew SSL).
 - Nginx `worker_connections` no longer fixed at 1048576 (RAM-aware now);
   removed an install-time `stress-ng` 1 GB allocation that could OOM small VPS.
 

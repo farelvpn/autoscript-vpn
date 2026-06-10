@@ -70,7 +70,7 @@ echo "[4/8] Removing management scripts, libraries, and API handlers..."
 rm -rf /usr/local/sbin/api
 rm -rf /usr/local/sbin/lib
 rm -f /usr/local/sbin/db-migrate
-for cmd in menu menu-ssh menu-vless menu-vmess menu-trojan menu-host menu-backup menu-api menu-dropbear \
+for cmd in menu menu-ssh menu-vless menu-vmess menu-trojan menu-host menu-backup menu-api menu-dropbear menu-system \
     add-ssh add-vless add-vmess add-trojan add-bulk \
     trial-ssh trial-vless trial-vmess trial-trojan \
     delete-ssh delete-vless delete-vmess delete-trojan \
@@ -84,7 +84,7 @@ for cmd in menu menu-ssh menu-vless menu-vmess menu-trojan menu-host menu-backup
     loop-quota-vless loop-quota-vmess loop-quota-trojan \
     quota-vless quota-vmess quota-trojan \
     xp-ssh xp-vless xp-vmess xp-trojan \
-    backup restore fixlog versi-xray stream-check change-domain change-timezone; do
+    backup restore fixlog versi-xray stream-check change-domain change-dns change-timezone uninstall; do
     rm -f "/usr/local/sbin/$cmd"
 done
 

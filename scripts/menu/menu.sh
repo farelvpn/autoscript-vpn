@@ -58,110 +58,6 @@ delall() {
     menu
 }
 
-# --- Function: DNS Changer ---
-mdns() {
-    P='\e[0;35m'
-    B='\033[0;36m'
-    G='\033[0;32m'
-    NC='\e[0m'
-    N='\e[0m'
-    clear
-    echo -e "\e[36m╒════════════════════════════════════════════╕\033[0m"
-    echo -e " \E[0;41;36m                 DNS CHANGER                \E[0m"
-    echo -e "\e[36m╘════════════════════════════════════════════╛\033[0m
-\033[1;37mDNS Changer By risqinf\033[0m
-\033[1;37mTelegram : https://t.me/risqinf      \033[0m"
-    dnsfile="/root/.dns"
-    if test -f "$dnsfile"; then
-        udns=$(cat /root/.dns)
-        echo -e ""
-        echo -e "   Active DNS : \033[1;37m$udns\033[0m"
-    fi
-    echo -e "
- [\033[1;36m•1 \033[0m]  Temporary DNS
- [\033[1;36m•2 \033[0m]  Permanent DNS
- [\033[1;36m•3 \033[0m]  Reset DNS To Default
- [\033[1;36m•4 \033[0m]  Back To Main Menu"
-    echo ""
-    echo -e "\033[1;37mPress [ Ctrl+C ] • To-Exit-Script\033[0m"
-    echo ""
-    read -p "Select From Options [ 1 - 4 ] :  " dns
-    echo -e ""
-    case $dns in
-    1)
-        clear
-        echo -e "\033[1;37mTemporary DNS - Back To Default DNS After Rebooting VPS\033[0m"
-        echo ""
-        read -p "Please Insert DNS : " dns1
-        if [ -z "$dns1" ]; then
-            echo ""
-            echo "Please Insert DNS !"
-            sleep 1
-            clear
-            mdns
-        fi
-        rm -f /etc/resolv.conf
-        echo "nameserver $dns1" > /etc/resolv.conf
-        echo "$dns1" > /root/.dns
-        echo ""
-        echo -e "\e[032;1mDNS $dns1 sucessfully insert in VPS\e[0m"
-        echo ""
-        cat /etc/resolv.conf
-        sleep 1
-        clear
-        mdns
-        ;;
-    2)
-        clear
-        echo ""
-        read -p "Please Insert DNS : " dns2
-        if [ -z "$dns2" ]; then
-            echo ""
-            echo "Please Insert DNS !"
-            sleep 1
-            clear
-            mdns
-        fi
-        rm -f /etc/resolv.conf
-        echo "nameserver $dns2" > /etc/resolv.conf
-        chattr +i /etc/resolv.conf 2>/dev/null
-        echo "$dns2" > /root/.dns
-        echo ""
-        echo -e "\e[032;1mDNS $dns2 sucessfully insert in VPS\e[0m"
-        echo ""
-        cat /etc/resolv.conf
-        sleep 1
-        clear
-        mdns
-        ;;
-    3)
-        clear
-        echo ""
-        read -p "Reset To Default DNS [Y/N]: " -e answer
-        if [ "$answer" = 'y' ] || [ "$answer" = 'Y' ]; then
-            chattr -i /etc/resolv.conf 2>/dev/null
-            rm -f /root/.dns
-            echo "nameserver 8.8.8.8" > /etc/resolv.conf
-            echo -e "[ ${G}INFO${NC} ] Reset to default DNS (8.8.8.8)"
-        else
-            echo -e "[ ${G}INFO${NC} ] Operation Cancelled By User"
-        fi
-        sleep 1
-        clear
-        mdns
-        ;;
-    4)
-        clear
-        menu
-        ;;
-    *)
-        echo "Please enter an correct number"
-        clear
-        mdns
-        ;;
-    esac
-}
-
 # --- Function: Clear RAM Cache ---
 run_cc() {
     sync
@@ -291,36 +187,36 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 printf "${LIGHT}%-12s : SSH(${GREEN}%s${NC}) | VLESS(${GREEN}%s${NC}) | VMESS(${GREEN}%s${NC}) | TROJAN(${GREEN}%s${NC})\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
 printf "${LIGHT}%-12s : DBear ($ressh) | OVPN ($resovpn) | Nginx ($resngx) | Xray ($resv2r)\n" "Services"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e " 1)  SSH Panel         7)  Xray Core          13) Auto Bulk"
-echo -e " 2)  VLESS Panel       8)  Clean Data         14) User Checker"
-echo -e " 3)  TROJAN Panel      9)  Stream Check       15) Change Domain"
-echo -e " 4)  VMESS Panel      10)  Speedtest          16) Timezone"
-echo -e " 5)  SSL & Cert       11)  Change DNS         17) Uninstall"
-echo -e " 6)  Backup/Restore   12)  API Menu"
+echo -e "${WHITE}  ACCOUNT PANELS${NC}"
+echo -e " 1)  SSH / OpenVPN Panel        3)  VMESS Panel"
+echo -e " 2)  VLESS Panel                4)  TROJAN Panel"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${WHITE}  TOOLS${NC}"
+echo -e " 5)  Auto Bulk Create           7)  User Checker"
+echo -e " 6)  Account Cleaner            8)  API Menu"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${WHITE}  SERVER${NC}"
+echo -e " 9)  System Menu                10) Backup / Restore"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e " x)  Exit"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 printf "${LIGHT}XRAY Version : [ ${GREEN}%s ${LIGHT}]\n" "$xray_version"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # --- MENU SELECTION ---
-read -p " Select Option [1-17]: " mm
+read -p " Select Option : " mm
 case $mm in
 1) clear ; run_cc ; menu-ssh ;;
 2) clear ; run_cc ; menu-vless ;;
-3) clear ; run_cc ; menu-trojan ;;
-4) clear ; run_cc ; menu-vmess ;;
-5) clear ; run_cc ; menu-host ;;
-6) clear ; run_cc ; menu-backup ;;
-7) clear ; run_cc ; versi-xray ;;
-8) clear ; run_cc ; delall ;;
-9) clear ; run_cc ; stream-check ;;
-10) clear ; run_cc ; echo -e "YES" | speedtest ;;
-11) clear ; run_cc ; mdns ;;
-12) clear ; run_cc ; menu-api ;;
-13) clear ; run_cc ; add-bulk ;;
-14) clear ; run_cc ; cek-user ;;
-15) clear ; run_cc ; change-domain ;;
-16) clear ; run_cc ; change-timezone ;;
-17) clear ; run_cc ; uninstall ;;
+3) clear ; run_cc ; menu-vmess ;;
+4) clear ; run_cc ; menu-trojan ;;
+5) clear ; run_cc ; add-bulk ;;
+6) clear ; run_cc ; delall ;;
+7) clear ; run_cc ; cek-user ;;
+8) clear ; run_cc ; menu-api ;;
+9) clear ; run_cc ; menu-system ;;
+10) clear ; run_cc ; menu-backup ;;
+x|X) clear ; exit 0 ;;
 00) clear ; run_cc ; nano /etc/issue.net ;;
 *) echo "Invalid option, please try again." ; sleep 1 ; menu ;;
 esac

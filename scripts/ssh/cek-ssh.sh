@@ -87,7 +87,6 @@ fi
 
 clear
 ui_header "SSH LIVE SESSION MONITOR"
-echo ""
 
 declare -A USER_SESS
 total_live=0
@@ -95,36 +94,40 @@ total_live=0
 # Iterate live proxy-ports (authoritative liveness), correlate to user + bandwidth.
 for pport in "${!LIVEPORT[@]}"; do
   user="${PORT2USER[$pport]}"
-  [[ -z "$user" ]] && user="detecting..."
-  cip="${S_CIP[$pport]:-?}"; cip="${cip%%:*}"
-  up="${S_UP[$pport]:-?}"
+  [[ -z "$user" ]] && user="(detecting)"
+  cip="${S_CIP[$pport]}"; cip="${cip%%:*}"; [[ -z "$cip" ]] && cip="(detecting)"
+  up="${S_UP[$pport]}";  [[ -z "$up" ]] && up="-"
   tx="${S_TX[$pport]:--}"; rx="${S_RX[$pport]:--}"; tot="${S_TOT[$pport]:--}"
   USER_SESS[$user]=$(( ${USER_SESS[$user]:-0} + 1 ))
   total_live=$((total_live+1))
-  ui_sep
-  printf " ${WHITE}%-12s${NC} : %s\n" "Username" "$user"
-  printf " ${WHITE}%-12s${NC} : %s\n" "Client IP" "$cip"
-  printf " ${WHITE}%-12s${NC} : %s\n" "Uptime" "$up"
-  printf " ${WHITE}%-12s${NC} : TX %s | RX %s | Total %s\n" "Bandwidth" "$tx" "$rx" "$tot"
+  ui_rule
+  ui_kv "Username"  "$user" "$CYAN"
+  ui_kv "Client IP" "$cip"
+  ui_kv "Uptime"    "$up"
+  ui_kv "Bandwidth" "TX ${tx} | RX ${rx} | Total ${tot}"
 done
 
 if [[ $total_live -eq 0 ]]; then
-  ui_sep
+  ui_rule
   echo -e " ${YELLOW}No active SSH sessions.${NC}"
 fi
 
-ui_sep
+ui_rule
 echo -e " ${WHITE}PER-USER SESSIONS (vs IP limit)${NC}"
-ui_sep
+ui_rule
 while IFS='|' read -r u limit; do
   [[ -z "$u" ]] && continue
   cnt=${USER_SESS[$u]:-0}
-  [[ "$limit" == "0" ]] && limit="Unlimited"
-  mark=""
-  [[ "$limit" != "Unlimited" && "$cnt" -gt "$limit" ]] && mark="  ${RED}[OVER LIMIT]${NC}"
-  printf " %-14s %s/%s%b\n" "$u" "$cnt" "$limit" "$mark"
+  col="$GREEN"
+  if [[ "$limit" == "0" ]]; then
+    limd="Unlimited"
+  else
+    limd="$limit"
+    [[ "$cnt" -gt "$limit" ]] && col="$RED"
+  fi
+  printf " ${WHITE}%-14s${NC} ${col}%s / %s${NC}\n" "$u" "$cnt" "$limd"
 done < <(db_query "SELECT username, limit_ip FROM accounts WHERE protocol='ssh' AND status='active' ORDER BY username;")
-ui_sep
+ui_rule
 echo -e " Total live sessions : ${GREEN}${total_live}${NC}"
 ui_foot
 ui_back

@@ -4,6 +4,10 @@
 # Description: AutoScript VPN & Tunneling Management System
 # Developed for Rocky Linux 9
 # ========================================================
+# ========================================================
+# Developed for Rocky Linux 9
+# ========================================================
+[[ -f /usr/local/sbin/lib/common.sh ]] && . /usr/local/sbin/lib/common.sh
 # UI Color Codes
 RED='\e[1;31m'
 GREEN='\e[1;32m'
@@ -40,17 +44,17 @@ generate() {
   mds=$(cat /etc/api/key)
   clear
   echo -e "${GREEN}${BOLD}[OK] Success Generate New Key${NC}"
-  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  ui_rule
   echo -e "${YELLOW}Your API Token:${NC}"
   echo -e "${BOLD}$newkey${NC}"
-  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  ui_rule
   read -n 1 -s -r -p "Press any key to return to menu..."
 }
 
 manual() {
   clear
   echo -e "${YELLOW}Add New Token API${NC}"
-  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  ui_rule
   read -p "Input Token: " token
   loading "${YELLOW}Adding Token"
   echo $token >> /etc/api/key
@@ -61,10 +65,10 @@ manual() {
   mds=$(cat /etc/api/key)
   clear
   echo -e "${GREEN}${BOLD}[OK] Success Add New Key API${NC}"
-  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  ui_rule
   echo -e "${YELLOW}Your API Token:${NC}"
   echo -e "${BOLD}$mds${NC}"
-  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  ui_rule
   read -n 1 -s -r -p "Press any key to return to menu..."
 }
 
@@ -112,36 +116,30 @@ detail() {
     clear
     edust_service=$(systemctl is-active server.service 2>/dev/null)
     if [[ $edust_service == "active" ]]; then
-      proxy1="${GREEN}● ONLINE${NC}"
+      proxy1="${GREEN}ONLINE${NC}"
     else
-      proxy1="${RED}● OFFLINE${NC}"
+      proxy1="${RED}OFFLINE${NC}"
     fi
 
-    echo -e "${BOLD}${BLUE}╔════════════════════════════════════════════╗${NC}"
-    echo -e "${BOLD}${BLUE}║           ${CYAN}<= Menu Web API =>               ${BLUE}║${NC}"
-    echo -e "${BOLD}${BLUE}╠════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${YELLOW}Status: $proxy1${NC}"   
-    echo -e "${BOLD}${BLUE}║${NC}  ${CYAN}Domain: ${BOLD}$domain${NC}"
-    echo -e "${BOLD}${BLUE}╠════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${YELLOW}With Port:${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}    - http://${domain}:9000/api/path"
-    echo -e "${BOLD}${BLUE}║${NC}    - http://${domain}:9000/vps/path"
-    echo -e "${BOLD}${BLUE}║${NC}  ${YELLOW}Default Port:${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}    - http://${domain}/api/path"
-    echo -e "${BOLD}${BLUE}║${NC}    - https://${domain}/api/path"
-    echo -e "${BOLD}${BLUE}║${NC}    - http://${domain}/vps/path"
-    echo -e "${BOLD}${BLUE}║${NC}    - https://${domain}/vps/path"
-    echo -e "${BOLD}${BLUE}╠════════════════════════════════════════════╣${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${BOLD}1.${NC} Generate New Key Token  ${CYAN}- Otomatis generate token baru${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${BOLD}2.${NC} Change Manual Key Token ${CYAN}- Edit file token manual${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${BOLD}3.${NC} Add Key Token API       ${CYAN}- Tambah token manual${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${BOLD}4.${NC} Enable API              ${CYAN}- Aktifkan API${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${BOLD}5.${NC} Restart API             ${CYAN}- Restart service API${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${BOLD}6.${NC} Disable API             ${CYAN}- Nonaktifkan API${NC}"
-    echo -e "${BOLD}${BLUE}║${NC}  ${BOLD}0.${NC} Back To Default Menu    ${CYAN}- Kembali ke menu utama${NC}"
-    echo -e "${BOLD}${BLUE}╚════════════════════════════════════════════╝${NC}"
-    echo -ne "${YELLOW}Pilih Opsi [0-6]: ${NC}"
-    read -r opw
+    ui_header "WEB API MENU"
+    echo -e " Status : $proxy1"
+    echo -e " Domain : ${CYAN}${domain}${NC}"
+    ui_rule
+    echo -e " Endpoints :"
+    echo -e "   http(s)://${domain}/api/path"
+    echo -e "   http(s)://${domain}/vps/path"
+    echo -e "   http://${domain}:9000/api/path"
+    ui_rule
+    echo -e " 1)  Generate New Key Token"
+    echo -e " 2)  Change Manual Key Token (edit file)"
+    echo -e " 3)  Add Key Token API"
+    echo -e " 4)  Enable API"
+    echo -e " 5)  Restart API"
+    echo -e " 6)  Disable API"
+    ui_foot
+    echo -e " 0)  Back to Main Menu"
+    ui_foot
+    read -rp " Select option [0-6]: " opw
 
     case $opw in
       1) generate ;;
@@ -150,8 +148,8 @@ detail() {
       4) enable ;;
       5) restart ;;
       6) disable ;;
-      0) clear ; menu ;;
-      *) echo -e "${RED}Opsi tidak valid!${NC}"; sleep 1 ;;
+      0|x|X) clear ; menu ;;
+      *) err "Invalid option."; sleep 1 ;;
     esac
   done
 }

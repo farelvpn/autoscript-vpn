@@ -13,9 +13,7 @@ domain=$(get_domain)
 ip=$(get_ip)
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;41;36m                 CREATE SSH TRIAL ACCOUNT                   \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_header "CREATE SSH TRIAL ACCOUNT"
 while true; do read -rp "Expired (60m/2h/1d): " duration; valid_duration "$duration" && break; err "Format: 60m, 2h, 1d."; done
 while true; do read -rp "Limit IP           : " limit_ip; valid_number "$limit_ip" && break; err "Number only."; done
 

@@ -13,9 +13,7 @@ domain=$(get_domain)
 ip=$(get_ip)
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;41;36m                    CREATE SSH ACCOUNT                      \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_header "CREATE SSH ACCOUNT"
 
 while true; do
   read -rp "Username       : " user

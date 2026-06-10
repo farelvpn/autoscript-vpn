@@ -7,10 +7,9 @@
 # ========================================================
 # Timezone Changer
 # ========================================================
+[[ -f /usr/local/sbin/lib/common.sh ]] && . /usr/local/sbin/lib/common.sh
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-echo -e "\e[0;41;36m                   CHANGE TIMEZONE                          \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_header "CHANGE TIMEZONE"
 
 current_tz=$(timedatectl | grep "Time zone" | awk '{print $3}')
 echo "Current Timezone: $current_tz"

@@ -9,6 +9,7 @@
 # ========================================================
 
 clear
+[[ -f /usr/local/sbin/lib/common.sh ]] && . /usr/local/sbin/lib/common.sh
 NC='\033[0m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -17,15 +18,13 @@ CYAN='\033[0;36m'
 BICyan='\033[1;96m'
 BIWhite='\033[1;97m'
 
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-echo -e "\e[0;41;36m                 XRAY CORE VERSION CHANGER                  \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_header "XRAY CORE VERSION CHANGER"
 
 # Check current Xray location
 xray_path=$(which xray 2>/dev/null)
 if [[ -z "$xray_path" ]]; then
     echo -e "${RED}Error: Xray not found in system!${NC}"
-    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+    ui_rule
     read -n 1 -s -r -p "Press any key to return to menu..."
     menu
     exit 1
@@ -47,7 +46,7 @@ case $architecture in
         ;;
     *)
         echo -e "${RED}Unsupported architecture: $architecture${NC}"
-        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+        ui_rule
         read -n 1 -s -r -p "Press any key to return to menu..."
         menu
         exit 1
@@ -60,11 +59,11 @@ echo -e "${BIWhite}Download Architecture:${NC} ${GREEN}$arch${NC}"
 # Get current version
 current_version=$($xray_path version | head -1 | awk '{print $2}')
 echo -e "${BIWhite}Current Version     :${NC} ${GREEN}$current_version${NC}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_rule
 
 # Display available versions (confirmed from GitHub releases)
 echo -e "${BICyan}Available Xray Core Versions:${NC}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_rule
 echo -e "1.  Xray v1.8.4    (Stable)"
 echo -e "2.  Xray v1.8.5    (Stable)"
 echo -e "3.  Xray v1.8.6    (Stable)"
@@ -81,7 +80,7 @@ echo -e "13. Xray v25.7.26  (Recent)"  # Based on search result [[4]]
 echo -e "14. Xray v25.8.3   (Latest)"  # Based on search result [[4]]
 echo -e "15. Custom Version (Enter manually)"
 echo -e "0.  Cancel"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_rule
 
 read -rp "Select version (0-15): " choice
 
@@ -133,7 +132,7 @@ case $choice in
         read -rp "Enter version (e.g., v1.8.9 or v25.8.3): " version
         if [[ -z "$version" ]]; then
             echo -e "${RED}Version cannot be empty!${NC}"
-            echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+            ui_rule
             read -n 1 -s -r -p "Press any key to return to menu..."
             menu
             exit 1
@@ -141,7 +140,7 @@ case $choice in
         # Validate version format
         if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo -e "${RED}Invalid version format! Please use format: v1.8.9${NC}"
-            echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+            ui_rule
             read -n 1 -s -r -p "Press any key to return to menu..."
             menu
             exit 1
@@ -149,7 +148,7 @@ case $choice in
         ;;
     0|*)
         echo -e "${YELLOW}Operation cancelled.${NC}"
-        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+        ui_rule
         read -n 1 -s -r -p "Press any key to return to menu..."
         menu
         exit 0
@@ -165,7 +164,7 @@ read -rp $'\e[1;31mAre you sure you want to update Xray core? (y/N): \e[0m' conf
 
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Operation cancelled.${NC}"
-    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+    ui_rule
     read -n 1 -s -r -p "Press any key to return to menu..."
     menu
     exit 0
@@ -193,7 +192,7 @@ if [[ $? -ne 0 ]]; then
     mv "${xray_path}.backup" "$xray_path"
     systemctl start xray.service
     rm -rf "$temp_dir"
-    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+    ui_rule
     read -n 1 -s -r -p "Press any key to return to menu..."
     menu
     exit 1
@@ -217,7 +216,7 @@ systemctl start xray.service
 
 # Verify installation
 new_version=$($xray_path version | head -1 | awk '{print $2}')
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_rule
 if [[ "$new_version" == *"$version"* ]]; then
     echo -e "${GREEN}SUCCESS:${NC} ${BIWhite}Xray core updated to ${GREEN}$new_version${NC}"
     echo -e "${BIWhite}Previous Version:${NC} ${RED}$current_version${NC}"
@@ -228,12 +227,12 @@ else
     echo -e "${BIWhite}Current Version :${NC} ${GREEN}$new_version${NC}"
 fi
 
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_rule
 echo -e "${GREEN}[OK]${NC} ${BIWhite}Config.json preserved${NC}"
 echo -e "${GREEN}[OK]${NC} ${BIWhite}Service configuration preserved${NC}"
 echo -e "${GREEN}[OK]${NC} ${BIWhite}Log files preserved${NC}"
 echo -e "${GREEN}[OK]${NC} ${BIWhite}Only core binary replaced${NC}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_rule
 
 read -n 1 -s -r -p "Press any key to return to menu..."
 menu

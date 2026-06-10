@@ -10,14 +10,12 @@
 db_init
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;41;36m                  SSH ACCOUNT DETAILS                       \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_header "SSH ACCOUNT DETAILS"
 db_query "SELECT username, datetime(expired_at,'unixepoch','localtime')
           FROM accounts WHERE protocol='ssh' AND status!='deleted'
           ORDER BY username;" \
   | while IFS='|' read -r u e; do printf " %-20s %s\n" "$u" "$e"; done
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_rule
 
 read -rp "Enter username: " user
 if ! valid_username "$user" || ! db_account_exists "ssh" "$user"; then

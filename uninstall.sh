@@ -13,9 +13,9 @@
 # locking you out of an active session. Those are noted at the end.
 # ========================================================
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo ""
 echo -e "\e[0;41;36m                 AUTOSCRIPT UNINSTALLER                     \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo ""
 
 if [[ $EUID -ne 0 ]]; then
     echo -e "\e[31mError: must be run as root.\e[0m"
@@ -112,6 +112,20 @@ fi
 echo "[6/9] Removing configs, database, and web/log directories..."
 rm -rf /etc/xray                       # config.json, xray.db, domain, keys, backup.pass
 rm -f  /etc/nginx/risqinf.conf
+# Restore a stock nginx.conf (ours 'include's the now-removed risqinf.conf,
+# which would otherwise make nginx fail to start).
+if [[ -f /etc/nginx/nginx.conf ]] && grep -q "risqinf.conf" /etc/nginx/nginx.conf; then
+    if [[ -f /etc/nginx/nginx.conf.rpmsave ]]; then
+        mv -f /etc/nginx/nginx.conf.rpmsave /etc/nginx/nginx.conf
+    else
+        rm -f /etc/nginx/nginx.conf
+    fi
+fi
+# HAProxy config + combined cert (created by the installer).
+rm -f  /etc/haproxy/haproxy.cfg
+rm -f  /etc/haproxy/haproxy.pem
+# Let's Encrypt / acme.sh material for this server (best effort).
+rm -rf /root/.acme.sh 2>/dev/null
 rm -rf /etc/dropbear
 rm -rf /etc/openvpn
 rm -rf /var/www/html/risqinf
@@ -139,15 +153,29 @@ if [[ -f /swapfile ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-echo "[9/9] Removing packages (best effort)..."
+echo "[9/9] Removing packages and firewall rules (best effort)..."
+# Close the ports the installer opened (leave 22 so you keep SSH access).
+for p in 3303/tcp 109/tcp 80/tcp 443/tcp 1194/tcp; do
+    firewall-cmd --permanent --zone=public --remove-port="$p" >/dev/null 2>&1
+done
+for p in 7300/udp 2200/udp; do
+    firewall-cmd --permanent --zone=public --remove-port="$p" >/dev/null 2>&1
+done
+firewall-cmd --permanent --remove-masquerade >/dev/null 2>&1
+firewall-cmd --reload >/dev/null 2>&1
 dnf remove haproxy nginx dropbear openvpn easy-rsa -y >/dev/null 2>&1
 
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo ""
 echo -e "\e[0;42;30m              UNINSTALLATION COMPLETE                       \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo ""
 echo "Not reverted (to avoid lockout) — adjust manually if desired:"
 echo "  - /etc/ssh/sshd_config (Port 22/3303, root login, password auth)"
-echo "  - firewall-cmd rules (open ports)"
 echo "  - /etc/sysctl.conf network tuning"
 echo "  - rsyslog package (kept; only the drop-in was removed)"
 echo "It is recommended to reboot the server."
+
+# Self-delete: remove this uninstaller script after a successful run.
+INSTALLED_CMD="/usr/local/sbin/uninstall"
+[[ -f "$INSTALLED_CMD" ]] && rm -f "$INSTALLED_CMD" 2>/dev/null
+rm -f -- "$0" 2>/dev/null
+exit 0

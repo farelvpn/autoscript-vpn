@@ -128,31 +128,29 @@ acc_ssh_renew() {
 ssh_print_cli() {
   local user="$1" pass="$2" ip_disp="$3" exp_disp="$4" title="${5:-SSH ACCOUNT}"
   local d; d=$(get_domain); local sip; sip=$(get_ip)
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  printf "\e[0;42;30m %-56s \e[0m\n" "$title"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  echo -e " Username     : ${user}"
-  echo -e " Password     : ${pass}"
-  echo -e " Host / IP    : ${d} / ${sip}"
-  echo -e " Limit IP     : ${ip_disp}"
-  echo -e " Expired      : ${exp_disp}"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  echo -e " Port OpenSSH : 22, 109"
-  echo -e " Port WS HTTP : 80, 8888"
-  echo -e " Port WS TLS  : 443"
-  echo -e " Port BadVPN  : 7300 (UDPGW)"
-  echo -e " Port OpenVPN : 1194 (TCP) / 2200 (UDP)"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  echo -e " Config HTTP Custom :"
-  echo -e " ${d}:1-65535@${user}:${pass}"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  echo -e " Payload (WS) :"
-  echo -e " GET /ssh HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  echo -e " OVPN TCP     : https://${d}/risqinf/openvpn/tcp.ovpn"
-  echo -e " OVPN UDP     : https://${d}/risqinf/openvpn/udp.ovpn"
-  echo -e " OVPN Bundle  : https://${d}/risqinf/openvpn/"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  ui_header "$title"
+  ui_kv "Username"  "$user" "$CYAN"
+  ui_kv "Password"  "$pass" "$CYAN"
+  ui_kv "Host / IP" "${d} / ${sip}"
+  ui_kv "Limit IP"  "$ip_disp"
+  ui_kv "Expired"   "$exp_disp"
+  ui_rule
+  ui_kv "OpenSSH"   "22, 109"
+  ui_kv "WS HTTP"   "80, 8888"
+  ui_kv "WS TLS"    "443"
+  ui_kv "BadVPN"    "7300 (UDPGW)"
+  ui_kv "OpenVPN"   "1194 (TCP) / 2200 (UDP)"
+  ui_rule
+  echo -e " ${WHITE}Config HTTP Custom :${NC}"
+  echo -e " ${GREEN}${d}:1-65535@${user}:${pass}${NC}"
+  ui_rule
+  echo -e " ${WHITE}Payload (WS) :${NC}"
+  echo -e " ${GREEN}GET /ssh HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]${NC}"
+  ui_rule
+  ui_kv "OVPN TCP"    "https://${d}/risqinf/openvpn/tcp.ovpn"
+  ui_kv "OVPN UDP"    "https://${d}/risqinf/openvpn/udp.ovpn"
+  ui_kv "OVPN Bundle" "https://${d}/risqinf/openvpn/"
+  ui_foot
 }
 
 # Full SSH account detail as Telegram HTML. Args: user pass ip_disp exp_disp [title]
@@ -197,70 +195,81 @@ human_bytes() {
 }
 
 # Boxed per-account login monitor for an xray protocol.
-# Counts only IPs seen in the most recent login window (last RECENT_SECS) so a
-# single client that reconnected several times is not counted multiple times.
+# Counts distinct CLIENT IPs seen in the most recent login window so a single
+# client that reconnected several times is not counted multiple times.
+#
+# Xray access-log line format:
+#   2026/06/10 19:02:02.376558 from 160.191.130.65:0 accepted tcp:host:port [tag] email: user
+# The client IP is the token AFTER "from" (field $4 here), NOT $3 (which is the
+# literal word "from"). The earlier code read $3 and printed "from" as the IP.
 # Arg: protocol (vless|vmess|trojan)
 xray_cek_monitor() {
   local proto="$1"
   local LOG="/var/log/xray/access.log"
-  local RECENT_SECS=120          # only connections within the last 2 minutes
-  local now_epoch; now_epoch=$(date +%s)
+  local RECENT_SECS=180          # only connections within the last 3 minutes
 
   clear
   ui_header "${proto^^} LOGIN MONITOR"
-  echo ""
+
+  # Build "epoch threshold" once. awk compares the log timestamp (converted to
+  # epoch via mktime) against this, so we never spawn a `date` per line.
+  local cutoff; cutoff=$(date +%s)
 
   local any=0
   while IFS='|' read -r user limit qb used exp; do
     [[ -z "$user" ]] && continue
 
     # Distinct client IPs from RECENT accepted log lines for this user.
-    # Xray access log line: "2026/06/10 07:45:59 1.2.3.4:1234 accepted ... email: user"
-    local ips
-    ips=$(awk -v u="email: ${user}" -v now="$now_epoch" -v win="$RECENT_SECS" '
+    local ips cnt
+    ips=$(awk -v u="email: ${user}" -v cutoff="$cutoff" -v win="$RECENT_SECS" '
       index($0, u) && /accepted/ {
-        # $1=date(YYYY/MM/DD) $2=time(HH:MM:SS) $3=src(ip:port)
-        ts=$1" "$2; gsub("/","-",ts);
-        cmd="date -d \""ts"\" +%s 2>/dev/null"; cmd | getline e; close(cmd);
-        if (e == "" ) next;
-        if (now - e <= win) {
-          ip=$3; sub(/:[0-9]+$/,"",ip);
-          if (ip != "") seen[ip]=1
+        # $1=YYYY/MM/DD  $2=HH:MM:SS(.micros)
+        split($1, d, "/");
+        t=$2; sub(/\..*/, "", t); split(t, c, ":");
+        ep=mktime(d[1]" "d[2]" "d[3]" "c[1]" "c[2]" "c[3]);
+        if (ep <= 0) next;
+        if (cutoff - ep <= win) {
+          # client IP = token after the word "from"
+          for (i=1; i<=NF; i++) if ($i=="from") { ipp=$(i+1); break }
+          sub(/:[0-9]+$/, "", ipp);          # strip :port
+          if (ipp ~ /^[0-9a-fA-F:.]+$/ && ipp != "") seen[ipp]=1
         }
       }
       END { for (k in seen) print k }
     ' "$LOG" 2>/dev/null | sort -u)
 
-    local cnt=0
-    [[ -n "$ips" ]] && cnt=$(echo "$ips" | grep -c .)
+    cnt=0
+    [[ -n "$ips" ]] && cnt=$(printf '%s\n' "$ips" | grep -c .)
 
     # Display values.
-    local limd usedd quotad
+    local limd usedd quotad ipcol
     [[ "$limit" == "0" ]] && limd="Unlimited" || limd="$limit"
     usedd=$(human_bytes "${used:-0}")
     if [[ "$qb" == "0" ]]; then quotad="Unlimited"; else quotad=$(human_bytes "$qb"); fi
+    ipcol="$GREEN"
+    if [[ "$limd" != "Unlimited" && "$cnt" -gt "$limit" ]]; then ipcol="$RED"; fi
 
     any=1
-    ui_sep
-    printf " ${WHITE}%-12s${NC} : %s\n" "Username" "$user"
-    printf " ${WHITE}%-12s${NC} : %s / %s IP\n" "Login IP" "$cnt" "$limd"
-    printf " ${WHITE}%-12s${NC} : %s / %s\n" "Quota" "$usedd" "$quotad"
-    printf " ${WHITE}%-12s${NC} : %s\n" "Expired" "$exp"
+    ui_rule
+    ui_kv "Username" "$user" "$CYAN"
+    ui_kv "Login IP" "${cnt} / ${limd} IP" "$ipcol"
+    ui_kv "Quota" "${usedd} / ${quotad}"
+    ui_kv "Expired" "$exp"
     if [[ -n "$ips" ]]; then
       printf " ${WHITE}%-12s${NC} :\n" "Active IPs"
-      while read -r one; do [[ -n "$one" ]] && echo "                  - $one"; done <<< "$ips"
+      while read -r one; do [[ -n "$one" ]] && echo -e "                ${GREEN}- ${one}${NC}"; done <<< "$ips"
     else
-      printf " ${WHITE}%-12s${NC} : %s\n" "Active IPs" "(none recently)"
+      ui_kv "Active IPs" "(none in last ${RECENT_SECS}s)" "$YELLOW"
     fi
-    if [[ "$limd" != "Unlimited" && "$cnt" -gt "$limit" ]]; then
-      echo -e "                  ${RED}[!] EXCEEDS IP LIMIT${NC}"
+    if [[ "$ipcol" == "$RED" ]]; then
+      echo -e "                ${RED}[!] EXCEEDS IP LIMIT${NC}"
     fi
   done < <(db_query "SELECT username, limit_ip, quota_bytes, used_bytes,
                             datetime(expired_at,'unixepoch','localtime')
                      FROM accounts WHERE protocol='${proto}' AND status='active'
                      ORDER BY username;")
 
-  ui_sep
+  ui_rule
   [[ $any -eq 0 ]] && echo -e " ${YELLOW}No active ${proto^^} accounts.${NC}"
   ui_foot
 }

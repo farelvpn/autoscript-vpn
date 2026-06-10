@@ -7,10 +7,9 @@
 # ========================================================
 # Domain Changer
 # ========================================================
+[[ -f /usr/local/sbin/lib/common.sh ]] && . /usr/local/sbin/lib/common.sh
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
-echo -e "\e[0;41;36m                    CHANGE DOMAIN                           \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[037;1m"
+ui_header "CHANGE DOMAIN"
 
 old_domain=$(cat /etc/xray/domain 2>/dev/null)
 echo "Current Domain: $old_domain"

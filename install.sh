@@ -1246,14 +1246,41 @@ ovpn_install_logic() {
     cp -r /usr/share/easy-rsa/3/* $EASYRSA_DIR/
     cd $EASYRSA_DIR
 
+    # Non-interactive PKI: batch mode + pre-filled fields so certificate
+    # credentials are generated and confirmed automatically (no prompts).
+    export EASYRSA_BATCH=1
+    export EASYRSA_REQ_CN="AutoscriptCA"
+    export EASYRSA_REQ_COUNTRY="ID"
+    export EASYRSA_REQ_PROVINCE="Jakarta"
+    export EASYRSA_REQ_CITY="Jakarta"
+    export EASYRSA_REQ_ORG="risqinf"
+    export EASYRSA_REQ_EMAIL="admin@${domain}"
+    export EASYRSA_REQ_OU="VPN"
+    export EASYRSA_ALGO="rsa"
+    export EASYRSA_KEY_SIZE=2048
+
     ./easyrsa init-pki
-    ./easyrsa build-ca nopass
-    ./easyrsa gen-req server nopass
-    ./easyrsa sign-req server server
+    ./easyrsa --batch build-ca nopass
+    ./easyrsa --batch gen-req server nopass
+    ./easyrsa --batch sign-req server server
     ./easyrsa gen-dh
     openvpn --genkey secret ta.key
 
     cp pki/ca.crt pki/issued/server.crt pki/private/server.key pki/dh.pem ta.key /etc/openvpn/server/
+
+    # Verify every credential exists and is non-empty before continuing.
+    ovpn_ok=1
+    for f in ca.crt server.crt server.key dh.pem ta.key; do
+        if [[ ! -s "/etc/openvpn/server/$f" ]]; then
+            print_error "OpenVPN credential missing/empty: $f"
+            ovpn_ok=0
+        fi
+    done
+    if [[ $ovpn_ok -eq 1 ]]; then
+        print_success "OpenVPN certificates generated and verified (CA, server cert/key, DH, TA)."
+    else
+        print_error "OpenVPN certificate generation failed; client profiles may not work."
+    fi
     PLUGIN_PAM="/usr/lib64/openvpn/plugins/openvpn-plugin-auth-pam.so"
 
     # UDP Server Config
@@ -1418,5 +1445,17 @@ fi
 
 clear
 # Notification
-echo -e " Script Success Install"
-rm -fr *.sh
+echo ""
+echo -e "\e[0;42;30m              INSTALLATION COMPLETE                         \e[0m"
+echo ""
+echo -e " Run 'menu' to open the management panel."
+echo -e " Tip: configure Telegram (System -> Telegram Setup) for notifications."
+echo ""
+
+# Self-delete: remove the installer (and any leftover *.sh in this dir) so the
+# server is left clean once setup finishes.
+SELF="$(readlink -f "$0" 2>/dev/null)"
+cd /root 2>/dev/null
+[[ -n "$SELF" && -f "$SELF" ]] && rm -f "$SELF" 2>/dev/null
+rm -f /root/install.sh /root/uninstall.sh 2>/dev/null
+exit 0

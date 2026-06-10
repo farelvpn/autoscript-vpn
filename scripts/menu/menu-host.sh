@@ -4,9 +4,9 @@
 # Description: AutoScript VPN & Tunneling Management System
 # Developed for Rocky Linux 9
 # ========================================================
+[[ -f /usr/local/sbin/lib/common.sh ]] && . /usr/local/sbin/lib/common.sh
 
 # Warna
-NC='\e[0m'
 green='\033[0;92m'
 red='\033[0;91m'
 yellow='\033[0;93m'
@@ -82,16 +82,16 @@ cert() {
 
 addhost() {
     clear
-    echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-    echo -e "Domain anda saat ini:"
-    echo -e "$(cat /etc/xray/domain)"
+    ui_header "CHANGE DOMAIN / HOST"
+    echo -e " Current domain:"
+    echo -e " ${GREEN}$(cat /etc/xray/domain)${NC}"
     echo ""
-    read -rp "Domain/Host: " -e host
+    read -rp " New Domain/Host: " -e host
     echo ""
-    if [ -z $host ]; then
-        echo "DONE CHANGE DOMAIN"
-        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-        read -n 1 -s -r -p "Press any key to back on menu"
+    if [ -z "$host" ]; then
+        warn "No change made."
+        ui_rule
+        read -n 1 -s -r -p " Press any key to return..."
         menu
     else
         cat /etc/xray/domain > /etc/xray/domain.bak
@@ -99,25 +99,25 @@ addhost() {
         old=$(cat /etc/xray/domain.bak)
         sed -i "s|server_name ${old};|server_name ${host};|" /etc/nginx/risqinf.conf
         rm -f /etc/xray/domain.bak
-        echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-        echo -e ""
-        read -n 1 -s -r -p "Press any key to renew cert"
+        ui_rule
+        read -n 1 -s -r -p " Press any key to renew cert..."
         cert
     fi
 }
 
 menu1() {
     clear
-    echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-    echo -e " 1. Change Hostname/Domain/Subdomain Server"
-    echo -e " 2. Renew Certificate Your Domain"
-    echo -e " 0. Back To Menu"
-    echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-    read -p " Input Option: " ope
+    ui_header "DOMAIN & CERTIFICATE"
+    echo -e " 1)  Change Hostname / Domain / Subdomain"
+    echo -e " 2)  Renew Certificate (current domain)"
+    ui_foot
+    echo -e " 0)  Back to Menu"
+    ui_foot
+    read -rp " Select option : " ope
     case $ope in
         1) addhost ;;
         2) cert ;;
-        0) menu ;;
+        0|x|X) menu ;;
         *) clear ; menu1 ;;
     esac
 }

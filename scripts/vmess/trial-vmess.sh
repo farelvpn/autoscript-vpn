@@ -20,9 +20,7 @@ vmess_link() {
 }
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;41;36m                 CREATE VMESS TRIAL ACCOUNT                 \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_header "CREATE VMESS TRIAL ACCOUNT"
 while true; do read -rp "Expired (60m/1h/1d): " duration; valid_duration "$duration" && break; err "Format: 60m, 1h, 1d."; done
 
 user="trial$(gen_pass 6)"
@@ -60,21 +58,19 @@ TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━�
 tg_send "$TEKS"
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;42;30m                 VMESS TRIAL CREATED                        \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_header "VMESS TRIAL CREATED"
 echo -e " Remarks      : ${user}"
 echo -e " Host/IP      : ${domain}"
 echo -e " UUID         : ${uuid}"
 echo -e " Network/Path : ws  / (multipath)"
 echo -e " Quota        : 10 GB     Limit IP : 2"
 echo -e " Expired      : ${exp_disp}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_rule
 echo -e " Link TLS  :"
 echo -e " ${vmesslink1}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_rule
 echo -e " Link HTTP :"
 echo -e " ${vmesslink2}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_rule
 read -n 1 -s -r -p " Press any key to back to menu..."
 menu

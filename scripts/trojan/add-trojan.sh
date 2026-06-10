@@ -12,9 +12,7 @@ db_init
 domain=$(get_domain)
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;41;36m                   ADD TROJAN ACCOUNT                       \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_header "ADD TROJAN ACCOUNT"
 
 while true; do
   read -rp "Username       : " user
@@ -63,9 +61,7 @@ TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━�
 tg_send "$TEKS"
 
 clear
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[0;42;30m                 TROJAN ACCOUNT CREATED                     \e[0m"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_header "TROJAN ACCOUNT CREATED"
 echo -e " Remarks      : ${user}"
 echo -e " Host/IP      : ${domain}"
 echo -e " Port TLS     : 443"
@@ -75,9 +71,9 @@ echo -e " Path         : /trojan"
 echo -e " Quota        : ${quota_disp}"
 echo -e " Limit IP     : ${ip_disp}"
 echo -e " Expired      : ${exp_disp}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_rule
 echo -e " Link TLS  :"
 echo -e " ${trojanlink1}"
-echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+ui_rule
 read -n 1 -s -r -p " Press any key to back to menu..."
 menu

@@ -52,6 +52,27 @@ and resource-tuning improvements from live VPS testing.
   resource limits, `Nice=-10`); removes any unit created by the XTLS installer.
 
 ### Fixed
+- Login monitor showed a literal "from" instead of the client IP and could
+  mis-count. Xray's access line is `... from <IP>:port accepted ...`; the
+  parser now reads the token after `from` (was reading the wrong field) and
+  counts distinct client IPs within a recent window, so one client that
+  reconnects many times shows as a single IP with its real address.
+- SSH live monitor client-IP/uptime now survive log rotation: `fixlog` keeps
+  the tail of `ssh-ws.log` and `/var/log/secure` (instead of wiping them) so
+  the proxy-port -> client-IP/user mapping for live sessions is retained.
+- Uninstall is now complete: removes the SSH system users it created, HAProxy
+  config + combined PEM, acme.sh data, restores a working `nginx.conf` (ours
+  includes the removed `risqinf.conf`), closes the firewall ports/masquerade
+  it opened (keeps 22), and both `install.sh`/`uninstall.sh` self-delete when
+  finished.
+- OpenVPN PKI now generated non-interactively (EasyRSA batch mode with
+  pre-filled fields) and every credential (CA, server cert/key, DH, TA) is
+  verified non-empty before the client `.ovpn` profiles are considered valid.
+- Consistent UI everywhere: one clean horizontal rule style (dropped the
+  `=`/box-drawing mix), width-adaptive headers via `ui_header`/`ui_rule`, and
+  shared `ui_kv` "label : value" rows across all create/trial/view, system
+  (change-domain/timezone, versi-xray), host, and API menus. Telegram messages
+  keep their rich HTML formatting for copy-paste.
 - SSH-over-WebSocket "400 Bad Request" with Xray logging
   `unsupported version: 13 not found in 'Sec-Websocket-Version'`: SSH-WS
   payloads use path `/` (same as VMESS multipath) but are not real WebSocket

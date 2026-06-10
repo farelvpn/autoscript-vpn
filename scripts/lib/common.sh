@@ -42,29 +42,44 @@ ui_width() {
 # Repeat a character N times (portable, no seq/printf-pattern surprises).
 ui_rep() { local ch="$1" n="$2" out=""; while (( n > 0 )); do out+="$ch"; ((n--)); done; printf '%s' "$out"; }
 
-# ASCII-safe rule line (renders identically on every terminal/codepage).
-line() { echo -e "${CYAN}$(ui_rep '=' "$(ui_width)")${NC}"; }
+# ASCII/Unicode-safe rule line. Uses a single light horizontal rule so every
+# separator in the whole UI looks uniform (no mixing of =, -, +).
+line() { echo -e "${CYAN}$(ui_rep '-' "$(ui_width)")${NC}"; }
 ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 info()  { echo -e "${BLUE}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # --- Consistent UI primitives (used by every menu/script) ---
-# Centered title in a uniform, width-adaptive box. Arg: title text.
+# A single horizontal rule (the one separator style used everywhere).
+ui_rule() { echo -e "${CYAN}$(ui_rep '-' "$(ui_width)")${NC}"; }
+# Centered title between two rules (clean, width-adaptive, no side bars so it
+# never breaks on narrow phone terminals). Arg: title text.
 ui_header() {
   local t="$1" w; w=$(ui_width)
-  local inner=$(( w - 2 ))
-  (( ${#t} > inner )) && t="${t:0:inner}"
-  local pad=$(( (inner - ${#t}) / 2 )); (( pad < 0 )) && pad=0
-  local rpad=$(( inner - pad - ${#t} )); (( rpad < 0 )) && rpad=0
-  echo -e "${CYAN}+$(ui_rep '-' "$inner")+${NC}"
-  printf "${CYAN}|${WHITE}%*s%s%*s${CYAN}|${NC}\n" "$pad" "" "$t" "$rpad" ""
-  echo -e "${CYAN}+$(ui_rep '-' "$inner")+${NC}"
+  (( ${#t} > w )) && t="${t:0:w}"
+  local pad=$(( (w - ${#t}) / 2 )); (( pad < 0 )) && pad=0
+  ui_rule
+  printf "${WHITE}%*s%s${NC}\n" "$pad" "" "$t"
+  ui_rule
 }
-ui_sep()  { echo -e "${CYAN}$(ui_rep '-' "$(ui_width)")${NC}"; }
-ui_foot() { echo -e "${CYAN}$(ui_rep '=' "$(ui_width)")${NC}"; }
+ui_sep()  { ui_rule; }
+ui_foot() { ui_rule; }
+# Centered title line only (no rules around it). Arg: title.
+ui_center() {
+  local t="$1" w; w=$(ui_width)
+  (( ${#t} > w )) && t="${t:0:w}"
+  local pad=$(( (w - ${#t}) / 2 )); (( pad < 0 )) && pad=0
+  printf "${WHITE}%*s%s${NC}\n" "$pad" "" "$t"
+}
 # Standard "back to menu" prompt used everywhere.
 ui_back() { echo ""; read -n 1 -s -r -p " Press any key to return..."; }
+# Aligned "label : value" row used by all detail/output panels.
+# Args: label value [value-color]
+ui_kv() {
+  local label="$1" value="$2" vcol="${3:-$GREEN}"
+  printf " ${WHITE}%-12s${NC} : ${vcol}%s${NC}\n" "$label" "$value"
+}
 
 # --- Service status helpers (used by menu + status checker) ---
 # Returns 0 if the unit is active.

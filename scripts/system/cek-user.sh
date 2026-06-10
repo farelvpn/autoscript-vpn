@@ -12,11 +12,9 @@ domain=$(get_domain)
 ip=$(get_ip)
 
 clear
-line
-echo -e "${WHITE}  UNIFIED ACCOUNT CHECKER${NC}"
-line
-read -rp "Input Username : " user
-line
+ui_header "UNIFIED ACCOUNT CHECKER"
+read -rp " Input Username : " user
+ui_rule
 
 if ! valid_username "$user"; then
   err "Invalid username format."
@@ -41,40 +39,46 @@ while IFS='|' read -r proto secret iplim qb exp status; do
     continue
   fi
   [[ "$qb" == "0" ]] && quota="Unlimited" || quota="$(( qb / 1073741824 )) GB"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  printf "\e[0;42;30m %-56s \e[0m\n" "${proto^^} ACCOUNT ($status)"
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-  echo -e " Remarks      : ${user}"
-  echo -e " Host / IP    : ${domain}"
+  ui_header "${proto^^} ACCOUNT (${status})"
+  ui_kv "Remarks"   "$user" "$CYAN"
+  ui_kv "Host / IP" "$domain"
   case "$proto" in
     vless)
-      echo -e " UUID         : ${secret}"
-      echo -e " Network/Path : ws  /vless     Port: 443 (TLS) / 80 (HTTP)"
-      echo -e " Quota        : ${quota}     Limit IP : ${iplim}"
-      echo -e " Expired      : ${exp}"
-      echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-      echo -e " Link TLS  :\n vless://${secret}@${domain}:443?path=/vless&security=tls&encryption=none&type=ws&host=${domain}&sni=${domain}#${user}"
-      echo -e " Link HTTP :\n vless://${secret}@${domain}:80?path=/vless&encryption=none&type=ws&host=${domain}#${user}"
+      ui_kv "UUID"     "$secret"
+      ui_kv "Net/Path" "ws  /vless   (443 TLS / 80 HTTP)"
+      ui_kv "Quota"    "$quota"
+      ui_kv "Limit IP" "$iplim"
+      ui_kv "Expired"  "$exp"
+      ui_rule
+      echo -e " ${WHITE}Link TLS :${NC}"
+      echo -e " ${GREEN}vless://${secret}@${domain}:443?path=/vless&security=tls&encryption=none&type=ws&host=${domain}&sni=${domain}#${user}${NC}"
+      echo -e " ${WHITE}Link HTTP :${NC}"
+      echo -e " ${GREEN}vless://${secret}@${domain}:80?path=/vless&encryption=none&type=ws&host=${domain}#${user}${NC}"
       ;;
     vmess)
-      echo -e " UUID         : ${secret}      AlterId: 0"
-      echo -e " Network/Path : ws  / (multipath)   Port: 443 (TLS) / 80 (HTTP)"
-      echo -e " Quota        : ${quota}     Limit IP : ${iplim}"
-      echo -e " Expired      : ${exp}"
-      echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-      echo -e " Link TLS  :\n $(vmess_link "$secret" 443 tls)"
-      echo -e " Link HTTP :\n $(vmess_link "$secret" 80 none)"
+      ui_kv "UUID"     "${secret}  (AlterId 0)"
+      ui_kv "Net/Path" "ws  /  multipath   (443 TLS / 80 HTTP)"
+      ui_kv "Quota"    "$quota"
+      ui_kv "Limit IP" "$iplim"
+      ui_kv "Expired"  "$exp"
+      ui_rule
+      echo -e " ${WHITE}Link TLS :${NC}"
+      echo -e " ${GREEN}$(vmess_link "$secret" 443 tls)${NC}"
+      echo -e " ${WHITE}Link HTTP :${NC}"
+      echo -e " ${GREEN}$(vmess_link "$secret" 80 none)${NC}"
       ;;
     trojan)
-      echo -e " Key          : ${secret}"
-      echo -e " Network/Path : ws  /trojan    Port: 443 (TLS)"
-      echo -e " Quota        : ${quota}     Limit IP : ${iplim}"
-      echo -e " Expired      : ${exp}"
-      echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-      echo -e " Link TLS  :\n trojan://${secret}@${domain}:443?type=ws&security=tls&host=${domain}&path=/trojan&sni=${domain}#${user}"
+      ui_kv "Key"      "$secret"
+      ui_kv "Net/Path" "ws  /trojan   (443 TLS)"
+      ui_kv "Quota"    "$quota"
+      ui_kv "Limit IP" "$iplim"
+      ui_kv "Expired"  "$exp"
+      ui_rule
+      echo -e " ${WHITE}Link TLS :${NC}"
+      echo -e " ${GREEN}trojan://${secret}@${domain}:443?type=ws&security=tls&host=${domain}&path=/trojan&sni=${domain}#${user}${NC}"
       ;;
   esac
-  echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+  ui_foot
 done < <(db_query "SELECT protocol, secret, limit_ip, quota_bytes,
                           datetime(expired_at,'unixepoch','localtime'), status
                    FROM accounts

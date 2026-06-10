@@ -9,6 +9,12 @@ Developed for **Rocky Linux 9**. Builds on 0.1.0-beta with routing, output,
 logging, and resource-tuning improvements from live VPS testing.
 
 ### Added
+- SSH-SSL/TLS (SNI) direct tunneling on port 443 alongside SSH-WebSocket.
+  HAProxy now terminates TLS on 443 and splits the decrypted stream: an HTTP
+  request line goes to the WebSocket stack (nginx -> Xray/ssh-ws), and any
+  other (raw SSH) stream is sent straight to Dropbear. One 443 port now serves
+  SSH-WS, SSH-SSL/SNI, VMESS, VLESS, and Trojan together. Account output and
+  Telegram messages now list the SSH SSL/SNI (Host/SNI, port 443) details.
 - Telegram setup menu (`set-telegram`, under System): configure the bot token
   and admin chat id from the panel, send a test message, or clear the config.
   Previously these had to be created by hand at `/etc/xray/{bot.key,client.id}`.

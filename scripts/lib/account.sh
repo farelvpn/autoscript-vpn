@@ -138,6 +138,7 @@ ssh_print_cli() {
   ui_kv "OpenSSH"   "22, 109"
   ui_kv "WS HTTP"   "80, 8888"
   ui_kv "WS TLS"    "443"
+  ui_kv "SSH SSL/SNI" "443 (direct TLS -> Dropbear)"
   ui_kv "BadVPN"    "7300 (UDPGW)"
   ui_kv "OpenVPN"   "1194 (TCP) / 2200 (UDP)"
   ui_rule
@@ -146,6 +147,9 @@ ssh_print_cli() {
   ui_rule
   echo -e " ${WHITE}Payload (WS) :${NC}"
   echo -e " ${GREEN}GET /ssh HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]${NC}"
+  ui_rule
+  echo -e " ${WHITE}SSH SSL/TLS (SNI) :${NC}"
+  echo -e " ${GREEN}Host/SNI: ${d}   Port: 443   (TLS direct to SSH)${NC}"
   ui_rule
   ui_kv "OVPN TCP"    "https://${d}/risqinf/openvpn/tcp.ovpn"
   ui_kv "OVPN UDP"    "https://${d}/risqinf/openvpn/udp.ovpn"
@@ -170,6 +174,7 @@ ssh_tg_text() {
 <b>Port OpenSSH :</b> <code>22, 109</code>
 <b>Port WS HTTP :</b> <code>80, 8888</code>
 <b>Port WS TLS  :</b> <code>443</code>
+<b>SSH SSL/SNI  :</b> <code>443</code> (TLS direct to SSH)
 <b>Port BadVPN  :</b> <code>7300</code>
 <b>Port OpenVPN :</b> <code>1194 (TCP), 2200 (UDP)</code>
 <b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
@@ -178,6 +183,9 @@ ssh_tg_text() {
 <b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
 <b>Payload :</b>
 <code>GET /ssh HTTP/1.1[crlf]Host: ${d}[crlf]Upgrade: websocket[crlf][crlf]</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>SSH SSL/TLS (SNI) :</b>
+<code>Host/SNI: ${d}  Port: 443</code>
 <b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
 <b>OVPN TCP :</b> <code>https://${d}/risqinf/openvpn/tcp.ovpn</code>
 <b>OVPN UDP :</b> <code>https://${d}/risqinf/openvpn/udp.ovpn</code>

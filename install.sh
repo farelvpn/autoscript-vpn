@@ -314,7 +314,7 @@ firewall-cmd --permanent --zone=public --add-port=2200/udp >/dev/null 2>&1   # O
 
 firewall-cmd --reload >/dev/null 2>&1
 print_success "Firewall locked down (allowlist only)."
-print_info "Internal services (Xray API 10085, WebAPI 9000, nginx 81/444) remain bound to 127.0.0.1."
+print_info "Internal services (Xray API 10085, WebAPI 9000, nginx 81) remain bound to 127.0.0.1."
 
 # Enterprise Sysctl Tuning (RAM/CPU aware)
 print_info "Applying network tuning for ${TIER} tier (${RAM_MB} MB RAM, ${CPU_CORES} CPU)..."
@@ -816,14 +816,7 @@ map \$http_sec_websocket_key \$root_upstream {
 
 server {
     listen 127.0.0.1:81 default_server proxy_protocol;
-    listen 127.0.0.1:444 ssl http2 default_server proxy_protocol;
-
     server_name ${domain};
-
-    ssl_certificate /etc/xray/xray.crt;
-    ssl_certificate_key /etc/xray/xray.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
 
     # Explicit protocol paths. Each uses a static proxy_pass (no variables) so
     # nginx resolves the upstream block directly (a variable in proxy_pass would
@@ -931,29 +924,49 @@ global
     user haproxy
     group haproxy
     daemon
+    tune.ssl.default-dh-param 2048
 
 defaults
     log global
     mode tcp
+    option tcplog
     timeout connect 5s
     timeout client 30m
     timeout server 30m
 
-frontend main_entry
+# Plain HTTP on :80 -> nginx (WS over HTTP, ACME, downloads).
+frontend http_in
     bind *:80
-    bind *:443 ssl crt /etc/haproxy/haproxy.pem
-    tcp-request inspect-delay 5s
-    tcp-request content accept if { req_ssl_hello_type 1 }
-    use_backend nginx_https if { req_ssl_hello_type 1 }
+    mode tcp
     default_backend nginx_http
+
+# TLS on :443. HAProxy terminates TLS (one cert, any SNI), then splits traffic
+# by the FIRST decrypted bytes:
+#   * starts with an HTTP method  -> WebSocket/HTTP stack (nginx -> xray/ssh-ws)
+#   * anything else (raw SSH)      -> Dropbear directly  == SSH "SSL/TLS" / "SNI"
+# This lets one 443 port serve BOTH SSH-WebSocket AND SSH-SSL/SNI direct tunnels
+# alongside VMESS/VLESS/Trojan.
+frontend tls_in
+    bind *:443 ssl crt /etc/haproxy/haproxy.pem
+    mode tcp
+    tcp-request inspect-delay 5s
+    # Detect an HTTP request line in the decrypted payload.
+    acl is_http req.payload(0,10) -m reg -i ^(GET|POST|HEAD|PUT|OPTIONS|DELETE|PATCH|TRACE|CONNECT)
+    # Proceed as soon as the client sends any bytes; otherwise fall through after
+    # the inspect-delay (SSH servers greet first, so SSH-SSL may send nothing).
+    tcp-request content accept if { req.len gt 0 }
+    use_backend nginx_http if is_http
+    # Default: treat as raw SSH inside TLS -> Dropbear (SSH-SSL / SNI tunneling).
+    default_backend ssh_direct
 
 backend nginx_http
     mode tcp
     server nginx_node 127.0.0.1:81 send-proxy check
 
-backend nginx_https
+backend ssh_direct
     mode tcp
-    server nginx_ssl_node 127.0.0.1:444 send-proxy check
+    # No send-proxy: Dropbear does not speak the PROXY protocol.
+    server dropbear_node 127.0.0.1:109 check
 EOF
     systemctl enable haproxy --now >/dev/null 2>&1
     check_service haproxy

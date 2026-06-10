@@ -171,16 +171,17 @@ IPVPS=$(curl -s ifconfig.me 2>/dev/null || echo "N/A")
 # --- MAIN MENU ---
 clear
 ui_header "ENTERPRISE VPN MANAGER"
-printf " ${WHITE}%-9s${NC} %s\n" "OS"     "$OS1"
-printf " ${WHITE}%-9s${NC} %s\n" "IP"     "$IPVPS"
-printf " ${WHITE}%-9s${NC} %s\n" "Domain" "$DOMAIN"
-printf " ${WHITE}%-9s${NC} %s\n" "Uptime" "$up"
-printf " ${WHITE}%-9s${NC} RAM %s   CPU %s\n" "Resource" "$frem" "$cpu"
-printf " ${WHITE}%-9s${NC} %s / %s / %s ${WHITE}(day/yest/mon)${NC}\n" "Traffic" "$ttoday" "$tyest" "$tmon"
+ui_kv "OS"       "$OS1"
+ui_kv "IP"       "$IPVPS"
+ui_kv "Domain"   "$DOMAIN"
+ui_kv "Uptime"   "$up"
+ui_kv "RAM"      "$frem"
+ui_kv "CPU"      "$cpu"
+ui_kv "Traffic"  "$ttoday / $tyest / $tmon  (day/yest/mon)"
 ui_rule
-printf " ${WHITE}%-9s${NC} SSH ${GREEN}%s${NC}  VLESS ${GREEN}%s${NC}  VMESS ${GREEN}%s${NC}  TROJAN ${GREEN}%s${NC}\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
-printf " ${WHITE}%-9s${NC} SSH+WS ${ressshws}  Xray ${resv2r}  Nginx ${resngx}\n" "Services"
-printf " ${WHITE}%-9s${NC} HAProxy ${reshap}  OpenVPN ${resovpn}\n" ""
+printf " ${WHITE}%-12s${NC} : SSH ${GREEN}%s${NC}  VLESS ${GREEN}%s${NC}  VMESS ${GREEN}%s${NC}  TROJAN ${GREEN}%s${NC}\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
+printf " ${WHITE}%-12s${NC} : SSH+WS ${ressshws}  Xray ${resv2r}  Nginx ${resngx}\n" "Services"
+printf " ${WHITE}%-12s${NC}   HAProxy ${reshap}  OpenVPN ${resovpn}\n" ""
 ui_rule
 ui_label "ACCOUNT PANELS"
 ui_opt 1 "SSH / OpenVPN Panel"
@@ -199,7 +200,7 @@ ui_opt 9  "System Menu"
 ui_opt 10 "Backup / Restore"
 ui_opt x  "Exit"
 ui_rule
-printf " ${WHITE}%-9s${NC} ${GREEN}%s${NC}\n" "Xray" "$xray_version"
+ui_kv "Xray" "$xray_version"
 ui_foot
 
 # --- MENU SELECTION ---

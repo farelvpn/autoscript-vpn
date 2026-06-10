@@ -17,6 +17,25 @@ Supports SSH, VLESS, VMESS, Trojan, and OpenVPN with WebSocket (WS), TLS, and HA
 - Live SSH session monitor with per-user bandwidth (info only)
 - Encrypted backup/restore to Telegram; account notifications to Telegram
 - Strict firewall allowlist; hardened systemd services
+- Auto-tuning by RAM/CPU (Nginx/HAProxy connections, TCP buffers, file limits,
+  swap), so it fits a 1 CPU / 1 GB VPS and scales up on larger machines
+
+## Auto-tuning
+
+The installer detects total RAM and CPU count and tunes the stack to fit the
+machine (no manual editing needed):
+
+| RAM tier | Nginx conn/worker | HAProxy maxconn | TCP buffers | Swap | swappiness |
+|----------|-------------------|-----------------|-------------|------|------------|
+| ≤ 1 GB   | 4096   | 8192   | 16 MB  | 2 GB | 60 |
+| ≤ 2 GB   | 16384  | 32768  | 32 MB  | 2 GB | 15 |
+| ≤ 4 GB   | 65535  | 100000 | 64 MB  | 4 GB | 15 |
+| > 4 GB   | 131072 | 200000 | 128 MB | 4 GB | 15 |
+
+Nginx `worker_processes` follows the CPU count. Swap size is capped by free
+disk (needs the swap size + 5 GB headroom). This prevents the previous
+fixed `worker_connections 1048576` (which alone reserved ~445 MB/worker) from
+OOM-ing a small VPS.
 
 ## Ports
 

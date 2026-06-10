@@ -68,11 +68,47 @@ show_progress() {
     echo -e "\n"
 }
 
+# ========================================================
+# Resource detection & auto-tuning (RAM/CPU aware)
+# Sets globals used by sysctl, nginx, haproxy, xray, and swap so the stack
+# fits a 1 CPU / 1 GB VPS yet scales up on larger machines.
+# ========================================================
+detect_resources() {
+    CPU_CORES=$(nproc 2>/dev/null); [[ "$CPU_CORES" =~ ^[0-9]+$ ]] || CPU_CORES=1
+    RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo 2>/dev/null)
+    [[ "$RAM_MB" =~ ^[0-9]+$ ]] || RAM_MB=1024
+
+    # Tier by total RAM.
+    if   (( RAM_MB <= 1280 )); then
+        TIER="1GB";   NGX_CONN=4096;   HA_MAXCONN=8192;    NET_BUF=16777216;  XRAY_NOFILE=262144
+    elif (( RAM_MB <= 2560 )); then
+        TIER="2GB";   NGX_CONN=16384;  HA_MAXCONN=32768;   NET_BUF=33554432;  XRAY_NOFILE=524288
+    elif (( RAM_MB <= 5120 )); then
+        TIER="4GB";   NGX_CONN=65535;  HA_MAXCONN=100000;  NET_BUF=67108864;  XRAY_NOFILE=1000000
+    else
+        TIER="8GB+";  NGX_CONN=131072; HA_MAXCONN=200000;  NET_BUF=134217728; XRAY_NOFILE=1000000
+    fi
+
+    # nginx: one worker per core; rlimit must cover all connections per worker
+    # (cap so cores*conn doesn't exceed the system fd ceiling unreasonably).
+    NGX_WORKERS=$CPU_CORES
+    NGX_RLIMIT=$(( NGX_CONN + 1024 ))
+    # System-wide fd ceiling for the file-max sysctl.
+    FILE_MAX=$(( (NGX_CONN * CPU_CORES) + 100000 ))
+    (( FILE_MAX < 262144 )) && FILE_MAX=262144
+
+    # TCP buffer auto-tune ceilings scale with the tier.
+    TCP_RMEM_MAX=$NET_BUF
+    TCP_WMEM_MAX=$NET_BUF
+}
+
 # Check if the user is root
 if [ "$EUID" -ne 0 ]; then
   echo -e "${RED}Error: This script must be run as root!${NC}"
   exit 1
 fi
+
+detect_resources
 
 # Password Root Change
 print_header
@@ -273,22 +309,25 @@ firewall-cmd --reload >/dev/null 2>&1
 print_success "Firewall locked down (allowlist only)."
 print_info "Internal services (Xray API 10085, WebAPI 9000, nginx 81/444) remain bound to 127.0.0.1."
 
-# Enterprise Sysctl Tuning
-print_info "Applying Enterprise Network Tweak (BBR, High-Conn)..."
+# Enterprise Sysctl Tuning (RAM/CPU aware)
+print_info "Applying network tuning for ${TIER} tier (${RAM_MB} MB RAM, ${CPU_CORES} CPU)..."
 cat > /etc/sysctl.conf <<EOF
 net.ipv4.ip_forward = 1
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 net.ipv4.tcp_fastopen = 3
-net.core.rmem_max = 67108864
-net.core.wmem_max = 67108864
+net.core.rmem_max = ${TCP_RMEM_MAX}
+net.core.wmem_max = ${TCP_WMEM_MAX}
 net.core.somaxconn = 65535
-net.ipv4.tcp_rmem = 4096 87380 67108864
-net.ipv4.tcp_wmem = 4096 65536 67108864
+net.core.netdev_max_backlog = 16384
+net.ipv4.tcp_rmem = 4096 87380 ${TCP_RMEM_MAX}
+net.ipv4.tcp_wmem = 4096 65536 ${TCP_WMEM_MAX}
 net.ipv4.tcp_low_latency = 1
+net.ipv4.tcp_max_syn_backlog = 8192
+fs.file-max = ${FILE_MAX}
 EOF
 sysctl -p >/dev/null 2>&1
-print_success "Network stack optimized."
+print_success "Network stack optimized (buffers: $((NET_BUF/1048576)) MB, file-max: ${FILE_MAX})."
 
 # Set Data Domain Server
 print_header
@@ -675,10 +714,10 @@ nginx_install_logic() {
 user nginx;
 worker_processes auto;
 worker_cpu_affinity auto;
-worker_rlimit_nofile 1048576;
+worker_rlimit_nofile ${NGX_RLIMIT};
 
 events {
-    worker_connections 1048576;
+    worker_connections ${NGX_CONN};
     multi_accept on;
     use epoll;
 }
@@ -810,7 +849,7 @@ haproxy_install_logic() {
     cat > /etc/haproxy/haproxy.cfg <<EOF
 global
     log /dev/log local0
-    maxconn 100000
+    maxconn ${HA_MAXCONN}
     user haproxy
     group haproxy
     daemon
@@ -1044,35 +1083,34 @@ echo -e "clear ; menu" > /root/.profile
 # Dynamic Swap Management (KVM Optimized)
 swap_install_logic() {
     echo -e "———————————————————————————————————————————————————————"
-    echo -e "            CONFIGURING DYNAMIC SWAP"
+    echo -e "            CONFIGURING DYNAMIC SWAP (RAM-aware)"
     echo -e "———————————————————————————————————————————————————————"
 
-    # Detection: KVM Check
-    VIRT=$(hostnamectl status | grep "Virtualization" | awk '{print $2}')
-    if [[ "$VIRT" != "kvm" ]]; then
-        echo -e "\e[33m[SKIP]\e[0m Virtualization is $VIRT (Not KVM). Skipping swap optimization."
-    else
-        # Calculate Swap Size based on Disk Space
-        # FREE_DISK in KB
-        FREE_DISK=$(df -k / | awk 'NR==2 {print $4}')
-        
-        if [ "$FREE_DISK" -gt 41943040 ]; then   # > 40GB free -> 8GB Swap
-            SWAP_SIZE_GB=8
-        elif [ "$FREE_DISK" -gt 20971520 ]; then # > 20GB free -> 4GB Swap
-            SWAP_SIZE_GB=4
-        elif [ "$FREE_DISK" -gt 10485760 ]; then # > 10GB free -> 2GB Swap
-            SWAP_SIZE_GB=2
-        else
-            SWAP_SIZE_GB=0
-        fi
+    # Swap sizing is driven by RAM (most needed on low-RAM VPS), then capped
+    # by available disk. Applies to all virt types (not just KVM).
+    FREE_DISK=$(df -k / | awk 'NR==2 {print $4}')   # KB free on /
+    # Target swap by RAM tier.
+    if   (( RAM_MB <= 1280 )); then SWAP_SIZE_GB=2     # ~1GB RAM -> 2GB swap
+    elif (( RAM_MB <= 2560 )); then SWAP_SIZE_GB=2     # ~2GB RAM -> 2GB swap
+    elif (( RAM_MB <= 5120 )); then SWAP_SIZE_GB=4     # ~4GB RAM -> 4GB swap
+    else                            SWAP_SIZE_GB=4     # >4GB RAM -> 4GB swap (plenty)
+    fi
+    # Cap by disk: need swap size + 5GB headroom free.
+    NEED_KB=$(( (SWAP_SIZE_GB * 1024 * 1024) + (5 * 1024 * 1024) ))
+    while (( SWAP_SIZE_GB > 0 )) && (( FREE_DISK < NEED_KB )); do
+        SWAP_SIZE_GB=$(( SWAP_SIZE_GB - 1 ))
+        NEED_KB=$(( (SWAP_SIZE_GB * 1024 * 1024) + (5 * 1024 * 1024) ))
+    done
 
+    if true; then
         if [ "$SWAP_SIZE_GB" -gt 0 ]; then
-            echo -e "\e[32m[INFO]\e[0m Disk space sufficient. Creating ${SWAP_SIZE_GB}GB Swapfile..."
+            echo -e "\e[32m[INFO]\e[0m RAM ${RAM_MB} MB -> creating ${SWAP_SIZE_GB}GB swapfile..."
             
             # Cleanup Old Swap
             swapoff -a >/dev/null 2>&1
             sed -i '/swapfile/d' /etc/fstab >/dev/null 2>&1
             rm -f /swapfile >/dev/null 2>&1
+
 
             # Create Swapfile
             if command -v fallocate >/dev/null 2>&1; then
@@ -1086,18 +1124,14 @@ swap_install_logic() {
             swapon /swapfile >/dev/null 2>&1
             echo "/swapfile none swap defaults 0 0" >> /etc/fstab
 
-            # Enterprise Kernel Tuning
-            sysctl -w vm.swappiness=60 >/dev/null 2>&1
-            echo "vm.swappiness=60" >> /etc/sysctl.conf
+            # Swappiness: lean on swap more on low-RAM boxes, less on big ones.
+            if (( RAM_MB <= 1280 )); then SWAPPINESS=60; else SWAPPINESS=15; fi
+            sysctl -w vm.swappiness=${SWAPPINESS} >/dev/null 2>&1
+            echo "vm.swappiness=${SWAPPINESS}" >> /etc/sysctl.conf
 
-            # Optional: Stress test activation (Enterprise minimal)
-            if dnf list installed stress-ng >/dev/null 2>&1; then
-                stress-ng --vm 1 --vm-bytes 1G --timeout 5s >/dev/null 2>&1
-            fi
-            
-            echo -e "\e[32m[OK]\e[0m ${SWAP_SIZE_GB}GB Swap activated successfully."
+            echo -e "\e[32m[OK]\e[0m ${SWAP_SIZE_GB}GB swap active (swappiness=${SWAPPINESS})."
         else
-            echo -e "\e[31m[WARN]\e[0m Disk space too low for optimized swap."
+            echo -e "\e[31m[WARN]\e[0m Not enough free disk for a swapfile; skipped."
         fi
     fi
     echo -e "———————————————————————————————————————————————————————"

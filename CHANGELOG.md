@@ -34,6 +34,10 @@ First public beta. Developed for **Rocky Linux 9**.
   mapping (informational; no SSH quota enforcement).
 - `rsyslog` setup so `authpriv` (SSH/Dropbear logins) is written to
   `/var/log/secure` on minimal EL9 installs.
+- RAM/CPU auto-tuning: the installer detects total RAM and CPU and scales
+  Nginx `worker_connections`/`worker_rlimit_nofile`, HAProxy `maxconn`, TCP
+  buffer sizes, `fs.file-max`, swap size, and `vm.swappiness` accordingly —
+  fits a 1 CPU / 1 GB VPS and scales up on larger machines.
 - Clean, tabular `docs/API.md` describing the JSON handler contract.
 
 ### Changed
@@ -50,6 +54,10 @@ First public beta. Developed for **Rocky Linux 9**.
 - SSH login failures ("incorrect username or password"): register the nologin
   shell (`/usr/sbin/nologin`) in `/etc/shells` so PAM's `pam_shells` accepts
   tunneling accounts.
+- Replaced the fixed Nginx `worker_connections 1048576` (which reserved
+  ~445 MB per worker and could OOM a 1 GB VPS) with RAM-aware values.
+- Removed a stray `stress-ng --vm-bytes 1G` swap "test" that could OOM a
+  low-RAM box during install.
 
 ### Security
 - Removed a leaked Google Drive OAuth token; rclone is configured

@@ -9,14 +9,19 @@
 
 menu_system() {
     clear
-    ui_header "SYSTEM MENU"
-    echo -e " 1)  Change Domain / Renew SSL   6)  Dropbear Version"
-    echo -e " 2)  Change DNS                  7)  Change Timezone"
-    echo -e " 3)  Stream / Media Check        8)  Service Status"
-    echo -e " 4)  Speedtest                   9)  Telegram Setup"
-    echo -e " 5)  Xray Core Version          10)  Uninstall Script"
-    ui_foot
-    echo -e " 0)  Back to Main Menu"
+    ui_header "SYSTEM PANEL"
+    ui_opt 1  "Change Domain / Renew SSL"
+    ui_opt 2  "Change DNS"
+    ui_opt 3  "Stream / Media Check"
+    ui_opt 4  "Speedtest"
+    ui_opt 5  "Xray Core Version"
+    ui_opt 6  "Dropbear Version"
+    ui_opt 7  "Change Timezone"
+    ui_opt 8  "Service Status"
+    ui_opt 9  "Telegram Setup"
+    ui_opt 10 "Uninstall Script"
+    ui_rule
+    ui_opt 0 "Back to Main Menu"
     ui_foot
     read -rp " Select option : " opt
     case "$opt" in

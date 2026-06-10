@@ -108,10 +108,10 @@ addhost() {
 menu1() {
     clear
     ui_header "DOMAIN & CERTIFICATE"
-    echo -e " 1)  Change Hostname / Domain / Subdomain"
-    echo -e " 2)  Renew Certificate (current domain)"
-    ui_foot
-    echo -e " 0)  Back to Menu"
+    ui_opt 1 "Change Hostname / Domain / Subdomain"
+    ui_opt 2 "Renew Certificate (current domain)"
+    ui_rule
+    ui_opt 0 "Back to Menu"
     ui_foot
     read -rp " Select option : " ope
     case $ope in

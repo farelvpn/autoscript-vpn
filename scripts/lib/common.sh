@@ -27,6 +27,8 @@ export YELLOW='\033[1;33m'
 export BLUE='\033[0;34m'
 export CYAN='\033[0;36m'
 export WHITE='\033[1;37m'
+export BICyan='\033[1;96m'
+export BIWhite='\033[1;97m'
 
 # --- Adaptive width (tidy on small phone terminals: Termux/PuTTY) ---
 # Detects the real terminal width and clamps it to a readable range so boxes
@@ -42,17 +44,17 @@ ui_width() {
 # Repeat a character N times (portable, no seq/printf-pattern surprises).
 ui_rep() { local ch="$1" n="$2" out=""; while (( n > 0 )); do out+="$ch"; ((n--)); done; printf '%s' "$out"; }
 
-# ASCII/Unicode-safe rule line. Uses a single light horizontal rule so every
-# separator in the whole UI looks uniform (no mixing of =, -, +).
-line() { echo -e "${CYAN}$(ui_rep '-' "$(ui_width)")${NC}"; }
+# Modern, widely-supported light rule (U+2500). Renders cleanly on phone
+# terminals (Termux), PuTTY, and desktop terminals alike.
+line() { echo -e "${CYAN}$(ui_rep '─' "$(ui_width)")${NC}"; }
 ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 info()  { echo -e "${BLUE}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # --- Consistent UI primitives (used by every menu/script) ---
-# A single horizontal rule (the one separator style used everywhere).
-ui_rule() { echo -e "${CYAN}$(ui_rep '-' "$(ui_width)")${NC}"; }
+# A single modern horizontal rule (the one separator style used everywhere).
+ui_rule() { echo -e "${CYAN}$(ui_rep '─' "$(ui_width)")${NC}"; }
 # Centered title between two rules (clean, width-adaptive, no side bars so it
 # never breaks on narrow phone terminals). Arg: title text.
 ui_header() {
@@ -60,7 +62,7 @@ ui_header() {
   (( ${#t} > w )) && t="${t:0:w}"
   local pad=$(( (w - ${#t}) / 2 )); (( pad < 0 )) && pad=0
   ui_rule
-  printf "${WHITE}%*s%s${NC}\n" "$pad" "" "$t"
+  printf "${BICyan}%*s%s${NC}\n" "$pad" "" "$t"
   ui_rule
 }
 ui_sep()  { ui_rule; }
@@ -72,6 +74,10 @@ ui_center() {
   local pad=$(( (w - ${#t}) / 2 )); (( pad < 0 )) && pad=0
   printf "${WHITE}%*s%s${NC}\n" "$pad" "" "$t"
 }
+# Section label (left aligned, bold-ish). Arg: text.
+ui_label() { echo -e " ${BIWhite}$1${NC}"; }
+# A numbered menu option row. Args: number text.
+ui_opt() { printf "  ${GREEN}%2s${NC}) %s\n" "$1" "$2"; }
 # Standard "back to menu" prompt used everywhere.
 ui_back() { echo ""; read -n 1 -s -r -p " Press any key to return..."; }
 # Aligned "label : value" row used by all detail/output panels.

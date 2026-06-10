@@ -9,14 +9,18 @@
 
 menu_ssh() {
     clear
-    ui_header "SSH / OPENVPN MENU"
-    echo -e " 1)  Create Account            6)  List Accounts"
-    echo -e " 2)  Trial Account             7)  Check Config / Details"
-    echo -e " 3)  Delete Account            8)  Recovery Account"
-    echo -e " 4)  Renew Account             9)  Check Login (live)"
-    echo -e " 5)  Change Dropbear Version"
-    ui_foot
-    echo -e " 0)  Back to Main Menu"
+    ui_header "SSH / OPENVPN PANEL"
+    ui_opt 1 "Create Account"
+    ui_opt 2 "Trial Account"
+    ui_opt 3 "Delete Account"
+    ui_opt 4 "Renew Account"
+    ui_opt 5 "List Accounts"
+    ui_opt 6 "Check Config / Details"
+    ui_opt 7 "Recovery Account"
+    ui_opt 8 "Check Login (live)"
+    ui_opt 9 "Change Dropbear Version"
+    ui_rule
+    ui_opt 0 "Back to Main Menu"
     ui_foot
     read -rp " Select option : " opt
     case "$opt" in
@@ -24,11 +28,11 @@ menu_ssh() {
         2) trial-ssh ;;
         3) delete-ssh ;;
         4) renew-ssh ;;
-        5) menu-dropbear ;;
-        6) list-ssh ;;
-        7) config-ssh ;;
-        8) recovery-ssh ;;
-        9) cek-ssh ;;
+        5) list-ssh ;;
+        6) config-ssh ;;
+        7) recovery-ssh ;;
+        8) cek-ssh ;;
+        9) menu-dropbear ;;
         0|x|X) menu ;;
         *) err "Invalid option."; sleep 1; menu_ssh ;;
     esac

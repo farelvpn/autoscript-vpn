@@ -9,13 +9,17 @@
 
 menu_vless() {
     clear
-    ui_header "VLESS MENU"
-    echo -e " 1)  Create Account            5)  Check Login (live)"
-    echo -e " 2)  Trial Account             6)  List Accounts"
-    echo -e " 3)  Delete Account            7)  Check Config / Details"
-    echo -e " 4)  Renew Account             8)  Recovery Account"
-    ui_foot
-    echo -e " 0)  Back to Main Menu"
+    ui_header "VLESS PANEL"
+    ui_opt 1 "Create Account"
+    ui_opt 2 "Trial Account"
+    ui_opt 3 "Delete Account"
+    ui_opt 4 "Renew Account"
+    ui_opt 5 "List Accounts"
+    ui_opt 6 "Check Config / Details"
+    ui_opt 7 "Recovery Account"
+    ui_opt 8 "Check Login (live)"
+    ui_rule
+    ui_opt 0 "Back to Main Menu"
     ui_foot
     read -rp " Select option : " opt
     case "$opt" in
@@ -23,10 +27,10 @@ menu_vless() {
         2) trial-vless ;;
         3) delete-vless ;;
         4) renew-vless ;;
-        5) cek-vless ;;
-        6) list-vless ;;
-        7) config-vless ;;
-        8) recovery-vless ;;
+        5) list-vless ;;
+        6) config-vless ;;
+        7) recovery-vless ;;
+        8) cek-vless ;;
         0|x|X) menu ;;
         *) err "Invalid option."; sleep 1; menu_vless ;;
     esac

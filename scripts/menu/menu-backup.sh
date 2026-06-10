@@ -10,10 +10,10 @@
 menu_backup() {
     clear
     ui_header "BACKUP & RESTORE"
-    echo -e " 1)  Backup now (encrypted -> Telegram)"
-    echo -e " 2)  Restore from backup"
-    ui_foot
-    echo -e " 0)  Back to Main Menu"
+    ui_opt 1 "Backup now (encrypted -> Telegram)"
+    ui_opt 2 "Restore from backup"
+    ui_rule
+    ui_opt 0 "Back to Main Menu"
     ui_foot
     read -rp " Select option : " opt
     case "$opt" in

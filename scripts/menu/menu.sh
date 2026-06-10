@@ -164,43 +164,43 @@ OS1=$(. /etc/os-release 2>/dev/null && echo "$PRETTY_NAME" || echo "Unknown OS")
 f1=$(. /etc/os-release 2>/dev/null && echo "$VERSION_ID" || echo "N/A")
 frem=$(free -h | grep "Mem:" | awk '{print $3 "/" $2}')
 freswp=$(free -h | grep "Swap:" | awk '{print $3 "/" $2}')
-cpu=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 "% user, " $4 "% sys, " $6 "% nice, " $8 "% idle"}')
+cpu=$(top -bn1 | grep "Cpu(s)" | awk '{print $8"% idle"}')
 xray_version=$(xray version 2>/dev/null | awk 'NR==1 {print $1, $2}' || echo "Not Installed")
 IPVPS=$(curl -s ifconfig.me 2>/dev/null || echo "N/A")
 
 # --- MAIN MENU ---
 clear
 ui_header "ENTERPRISE VPN MANAGER"
-printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "OS" "$OS1"
-printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "IP VPS" "$IPVPS"
-printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "Uptime" "$up"
-printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "Domain" "$DOMAIN"
-line
-printf "${LIGHT}%-10s :${GREEN} %s ${LIGHT}/ %s MB${NC}\n" "RAM" "$frem" "$tram"
-printf "${LIGHT}%-10s :${GREEN} %s${NC}\n" "CPU" "$cpu"
-line
-printf "${LIGHT}%-10s : ${RED}%s${NC} | ${RED}%s${NC} | ${RED}%s${NC}\n" "Bandwidth" "$ttoday" "$tyest" "$tmon"
-echo -e "${LIGHT}             (today | yesterday | month)${NC}"
-line
-printf "${LIGHT}%-10s : SSH ${GREEN}%s${NC} VLS ${GREEN}%s${NC} VMS ${GREEN}%s${NC} TRJ ${GREEN}%s${NC}\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
-printf "${LIGHT}%-10s : SSH+WS(${ressshws}${LIGHT}) OVPN(${resovpn}${LIGHT}) HAP(${reshap}${LIGHT})\n" "Services"
-printf "${LIGHT}%-10s : Nginx(${resngx}${LIGHT}) Xray(${resv2r}${LIGHT})\n" ""
-line
-echo -e "${WHITE}  ACCOUNT PANELS${NC}"
-echo -e " 1)  SSH / OpenVPN Panel        3)  VMESS Panel"
-echo -e " 2)  VLESS Panel                4)  TROJAN Panel"
-line
-echo -e "${WHITE}  TOOLS${NC}"
-echo -e " 5)  Auto Bulk Create           7)  User Checker"
-echo -e " 6)  Account Cleaner            8)  API Menu"
-line
-echo -e "${WHITE}  SERVER${NC}"
-echo -e " 9)  System Menu                10) Backup / Restore"
-line
-echo -e " x)  Exit"
-line
-printf "${LIGHT}XRAY Version : [ ${GREEN}%s ${LIGHT}]\n" "$xray_version"
-line
+printf " ${WHITE}%-9s${NC} %s\n" "OS"     "$OS1"
+printf " ${WHITE}%-9s${NC} %s\n" "IP"     "$IPVPS"
+printf " ${WHITE}%-9s${NC} %s\n" "Domain" "$DOMAIN"
+printf " ${WHITE}%-9s${NC} %s\n" "Uptime" "$up"
+printf " ${WHITE}%-9s${NC} RAM %s   CPU %s\n" "Resource" "$frem" "$cpu"
+printf " ${WHITE}%-9s${NC} %s / %s / %s ${WHITE}(day/yest/mon)${NC}\n" "Traffic" "$ttoday" "$tyest" "$tmon"
+ui_rule
+printf " ${WHITE}%-9s${NC} SSH ${GREEN}%s${NC}  VLESS ${GREEN}%s${NC}  VMESS ${GREEN}%s${NC}  TROJAN ${GREEN}%s${NC}\n" "Accounts" "$ssh1" "$vls" "$vms" "$tro"
+printf " ${WHITE}%-9s${NC} SSH+WS ${ressshws}  Xray ${resv2r}  Nginx ${resngx}\n" "Services"
+printf " ${WHITE}%-9s${NC} HAProxy ${reshap}  OpenVPN ${resovpn}\n" ""
+ui_rule
+ui_label "ACCOUNT PANELS"
+ui_opt 1 "SSH / OpenVPN Panel"
+ui_opt 2 "VLESS Panel"
+ui_opt 3 "VMESS Panel"
+ui_opt 4 "TROJAN Panel"
+ui_rule
+ui_label "TOOLS"
+ui_opt 5 "Auto Bulk Create"
+ui_opt 6 "Account Cleaner"
+ui_opt 7 "User Checker"
+ui_opt 8 "API Menu"
+ui_rule
+ui_label "SERVER"
+ui_opt 9  "System Menu"
+ui_opt 10 "Backup / Restore"
+ui_opt x  "Exit"
+ui_rule
+printf " ${WHITE}%-9s${NC} ${GREEN}%s${NC}\n" "Xray" "$xray_version"
+ui_foot
 
 # --- MENU SELECTION ---
 read -p " Select Option : " mm

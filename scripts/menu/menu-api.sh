@@ -121,7 +121,7 @@ detail() {
       proxy1="${RED}OFFLINE${NC}"
     fi
 
-    ui_header "WEB API MENU"
+    ui_header "WEB API PANEL"
     echo -e " Status : $proxy1"
     echo -e " Domain : ${CYAN}${domain}${NC}"
     ui_rule
@@ -130,14 +130,14 @@ detail() {
     echo -e "   http(s)://${domain}/vps/path"
     echo -e "   http://${domain}:9000/api/path"
     ui_rule
-    echo -e " 1)  Generate New Key Token"
-    echo -e " 2)  Change Manual Key Token (edit file)"
-    echo -e " 3)  Add Key Token API"
-    echo -e " 4)  Enable API"
-    echo -e " 5)  Restart API"
-    echo -e " 6)  Disable API"
-    ui_foot
-    echo -e " 0)  Back to Main Menu"
+    ui_opt 1 "Generate New Key Token"
+    ui_opt 2 "Change Manual Key Token (edit file)"
+    ui_opt 3 "Add Key Token API"
+    ui_opt 4 "Enable API"
+    ui_opt 5 "Restart API"
+    ui_opt 6 "Disable API"
+    ui_rule
+    ui_opt 0 "Back to Main Menu"
     ui_foot
     read -rp " Select option [0-6]: " opw
 

@@ -13,8 +13,8 @@ logging, and resource-tuning improvements from live VPS testing.
   HAProxy now terminates TLS on 443 and splits the decrypted stream: an HTTP
   request line goes to the WebSocket stack (nginx -> Xray/ssh-ws), and any
   other (raw SSH) stream is sent straight to Dropbear. One 443 port now serves
-  SSH-WS, SSH-SSL/SNI, VMESS, VLESS, and Trojan together. Account output and
-  Telegram messages now list the SSH SSL/SNI (Host/SNI, port 443) details.
+  SSH-WS, SSH-SSL/SNI, VMESS, VLESS, and Trojan together. Account output lists
+  the SSH SSL port (443).
 - Telegram setup menu (`set-telegram`, under System): configure the bot token
   and admin chat id from the panel, send a test message, or clear the config.
   Previously these had to be created by hand at `/etc/xray/{bot.key,client.id}`.
@@ -76,9 +76,14 @@ logging, and resource-tuning improvements from live VPS testing.
   shadowed the global menu) to call the real `backup`/`restore` commands.
 
 ### UI
-- One clean horizontal-rule style (dropped the `=`/box-drawing mix);
-  width-adaptive `ui_header`/`ui_rule` so menus stay tidy on small phone
-  terminals (Termux/PuTTY) and don't wrap; shared `ui_kv` "label : value" rows.
+- Modern, uniform UI: a single light horizontal rule (U+2500) everywhere
+  (dropped the `=`/heavy-bar/box-drawing mix); width-adaptive
+  `ui_header`/`ui_rule` so menus stay tidy on small phone terminals
+  (Termux/PuTTY) and don't wrap; single-column numbered options via `ui_opt`;
+  shared `ui_kv` "label : value" rows.
+- Main-menu status realigned into clean rows (no more wrapped `: Nginx`
+  continuation line); every submenu (SSH/VLESS/VMESS/Trojan/System/Backup/
+  Host/API/Dropbear) uses the same header + option layout.
 - All decorative glyphs in terminal output replaced with ASCII so they render
   on every terminal/codepage. Telegram messages keep their rich HTML formatting
   for copy-paste by sellers.

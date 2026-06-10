@@ -10,13 +10,16 @@ Supports SSH, VLESS, VMESS, Trojan, and OpenVPN with WebSocket (WS), TLS, and HA
 
 - SSH (OpenSSH + Dropbear) with SSH-over-WebSocket (GO-TUNNEL PRO)
 - VLESS, VMESS, Trojan over WebSocket (TLS + non-TLS) via Xray-core
-- OpenVPN (TCP 1194, UDP 2200)
-- HAProxy + Nginx front (TLS termination, WS routing)
+- OpenVPN (TCP 1194, UDP 2200) with auto-generated, verified certificates
+- HAProxy + Nginx front (TLS termination, path/handshake-based WS routing)
 - SQLite-backed account database with soft-delete + recovery and audit log
 - Per-account quota and IP limit (VLESS/VMESS/Trojan); SSH IP limit
-- Live SSH session monitor with per-user bandwidth (info only)
-- Encrypted backup/restore to Telegram; account notifications to Telegram
+- Live login monitors (per-protocol IP/quota; SSH per-user bandwidth, info only)
+- Encrypted backup/restore and account notifications to Telegram, configurable
+  from the menu (`Telegram Setup`)
+- Service-status overview and a 3-state SSH-tunnel health badge
 - Strict firewall allowlist; hardened systemd services
+- Adaptive, ASCII-clean UI that stays tidy on phone terminals (Termux/PuTTY)
 - Auto-tuning by RAM/CPU (Nginx/HAProxy connections, TCP buffers, file limits,
   swap), so it fits a 1 CPU / 1 GB VPS and scales up on larger machines
 
@@ -80,6 +83,58 @@ After installation, run the menu with:
 menu
 ```
 
+### Menu overview
+
+```
+Main Menu
+├── Account Panels
+│   ├── 1) SSH / OpenVPN     (create, trial, delete, renew, list, config,
+│   │                         recovery, check login, Dropbear version)
+│   ├── 2) VLESS             (create, trial, delete, renew, list, config,
+│   ├── 3) VMESS              recovery, check login, set quota, set limit IP)
+│   └── 4) TROJAN
+├── Tools
+│   ├── 5) Auto Bulk Create        7) User Checker (all protocols)
+│   └── 6) Account Cleaner         8) API Menu
+└── Server
+    ├── 9) System Menu
+    │     ├── Change Domain / Renew SSL   Dropbear version
+    │     ├── Change DNS                  Change Timezone
+    │     ├── Stream / Media Check        Service Status
+    │     ├── Speedtest                   Telegram Setup
+    │     └── Xray Core Version           Uninstall Script
+    └── 10) Backup / Restore
+```
+
+Most commands are also callable directly by name, e.g. `add-ssh`, `cek-vmess`,
+`status`, `set-telegram`, `backup`, `uninstall`.
+
+### Telegram notifications
+
+Account creation and encrypted backups are sent to the admin's Telegram. Set
+the bot token and chat id from **System → Telegram Setup** (or run
+`set-telegram`); it stores them at `/etc/xray/bot.key` and `/etc/xray/client.id`
+and can send a test message. Telegram output uses rich HTML so a seller can
+forward it straight to a buyer.
+
+## Request routing
+
+A single TLS port (443) and HTTP port (80) serve every protocol. HAProxy
+terminates the connection and forwards to Nginx, which routes by path — and, on
+the root path, by the WebSocket handshake:
+
+| Incoming path | Routed to |
+|---------------|-----------|
+| `/vless` | Xray VLESS inbound (`127.0.0.1:1`) |
+| `/trojan` | Xray Trojan inbound (`127.0.0.1:2`) |
+| `/ssh` | SSH-WS proxy (`127.0.0.1:8888`) — recommended SSH payload path |
+| `/` with `Sec-WebSocket-Key` header | Xray VMESS inbound (`127.0.0.1:3`) — multipath |
+| `/` without that header | SSH-WS proxy (`127.0.0.1:8888`) |
+
+This lets a genuine VMESS client (which always sends `Sec-WebSocket-Key`) and a
+raw SSH-WS injector payload (which does not) share the same root path without
+the SSH client getting a `400 Bad Request` from the VMESS inbound.
+
 ## Project Structure
 
 ```
@@ -98,7 +153,8 @@ autoscript/
     ├── vless/              # VLESS account management
     ├── vmess/              # VMESS account management
     ├── trojan/             # Trojan account management
-    ├── system/             # backup, restore, db-migrate, domain, timezone, ...
+    ├── system/             # backup, restore, db-migrate, status,
+    │                       #   set-telegram, change-*, fixlog, versi-xray, ...
     └── api/                # API command handlers
 ```
 
@@ -131,9 +187,17 @@ provides UDPGW on `7300`, and a localhost monitoring API on `8081`.
 
 ## Uninstall
 
+If the script is installed, just run the command:
+
 ```shell
-wget -q https://raw.githubusercontent.com/risqinf/autoscript/main/uninstall.sh ; chmod +x uninstall.sh ; ./uninstall.sh
+uninstall
 ```
+
+It stops and removes every service, binary, command, library, config, the
+database, web/log directories, the SSH system users it created, and the
+firewall rules it opened (keeping port 22 so you are not locked out). It also
+offers to remove the swap file. `install.sh` and `uninstall.sh` delete
+themselves once finished.
 
 ## API
 

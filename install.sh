@@ -717,6 +717,21 @@ else
     xray_install_logic
 fi
 
+# SELinux: permit the reverse-proxy chain (nginx/httpd) to open local network
+# connections to the Xray/ssh-ws/dropbear upstreams. Without this, on an
+# Enforcing system nginx fails with "connect() ... (13: Permission denied)"
+# when proxying to 127.0.0.1:1/2/3.
+print_info "Configuring SELinux booleans for the proxy stack..."
+if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce 2>/dev/null)" != "Disabled" ]]; then
+    dnf install -y policycoreutils >/dev/null 2>&1 || true
+    setsebool -P httpd_can_network_connect 1    2>/dev/null
+    setsebool -P httpd_can_network_connect_db 1 2>/dev/null
+    setsebool -P httpd_can_network_relay 1      2>/dev/null
+    print_success "SELinux booleans applied (httpd network connect enabled)."
+else
+    print_info "SELinux disabled or not present; skipping booleans."
+fi
+
 # Nginx & Certificate Setup
 print_info "Obtaining SSL Certificates (Let's Encrypt)..."
 dnf install socat lsof certbot -y >/dev/null 2>&1

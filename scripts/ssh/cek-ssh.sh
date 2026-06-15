@@ -43,47 +43,98 @@ if [[ -n "$SECLOG" ]]; then
 fi
 
 # --- 2) live proxy-ports (sockets to dropbear:109) ---
+# Note: avoid relying on `ss -H` (not supported everywhere); the grep on
+# '127.0.0.1:109' already drops the header line.
 declare -A LIVEPORT
 while read -r p; do
   [[ -n "$p" ]] && LIVEPORT[$p]=1
-done < <(ss -tnH 2>/dev/null | grep '127.0.0.1:109' \
+done < <(ss -tn 2>/dev/null | grep '127.0.0.1:109' \
           | grep -oE '127\.0\.0\.1:[0-9]+' | grep -v ':109$' | cut -d: -f2 | sort -u)
 
-# --- 3) ssh-ws.log -> per active session: proxyport|clientip|tx|rx|total|up ---
-declare -A S_PORT S_CIP S_TX S_RX S_TOT S_UP
+# --- 3) ssh-ws.log -> per session: proxyport|clientip|tx|rx|total|up|timestamp ---
+# Robust parser: strips ANSI color codes and matches [CONNECT]/[MONITOR]
+# anywhere on the line, extracting sessionID / client-IP / proxy-port by
+# pattern instead of fixed field positions. This survives colorized logs
+# and minor spacing differences.
+declare -A S_PORT S_CIP S_TX S_RX S_TOT S_UP S_TS
 if [[ -f "$WSLOG" ]]; then
-  while IFS='|' read -r pport cip tx rx tot up; do
+  while IFS='|' read -r pport cip tx rx tot up ts; do
     [[ -z "$pport" ]] && continue
     S_PORT[$pport]=1
     S_CIP[$pport]="$cip"; S_TX[$pport]="$tx"; S_RX[$pport]="$rx"
-    S_TOT[$pport]="$tot"; S_UP[$pport]="$up"
+    S_TOT[$pport]="$tot"; S_UP[$pport]="$up"; S_TS[$pport]="$ts"
   done < <(
     awk '
-      function sid(x){ gsub(/[\[\]]/,"",x); return x }
-      $3=="[CONNECT]" {
-        s=sid($4); pp=$0; sub(/.*proxy-port:/,"",pp); gsub(/[^0-9]/,"",pp);
-        SIDPP[s]=pp; SIDCIP[s]=$5;
+      # session id = first [token] on the line that is not the tag itself
+      function sid_from_line(   i,t){
+        for(i=1;i<=NF;i++){
+          t=$i;
+          if(t ~ /^\[/ && t !~ /CONNECT/ && t !~ /MONITOR/){ gsub(/[][]/,"",t); return t }
+        }
+        return "";
       }
-      $3=="[MONITOR]" {
-        s=sid($4); tx=""; rx=""; tot=""; upv="";
+      # client ip = first IPv4:port token on the line (the real client)
+      function client_ip(   i){
+        for(i=1;i<=NF;i++){ if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$/) return $i }
+        return "";
+      }
+      {
+        line=$0; gsub(/\033\[[0-9;]*m/,"",line); $0=line;   # strip ANSI, re-split
+      }
+      /\[CONNECT\]/ && /proxy-port:/ {
+        s=sid_from_line(); if(s==""){ next }
+        pp=$0; sub(/.*proxy-port:/,"",pp); gsub(/[^0-9]/,"",pp);
+        ip=client_ip();
+        SIDPP[s]=pp; if(ip!="") SIDCIP[s]=ip; SIDTS[s]=$1" "$2;
+        next;
+      }
+      /\[MONITOR\]/ {
+        s=sid_from_line(); if(s==""){ next }   # skips "Active sessions: N" summary
+        tx=""; rx=""; tot=""; upv="";
         for(i=1;i<=NF;i++){
           if($i ~ /^up:/)    upv=substr($i,4);
           if($i ~ /^TX:/)    tx=substr($i,4)" "$(i+1);
           if($i ~ /^RX:/)    rx=substr($i,4)" "$(i+1);
           if($i ~ /^Total:/) tot=substr($i,7)" "$(i+1);
         }
-        SIDTX[s]=tx; SIDRX[s]=rx; SIDTOT[s]=tot; SIDUP[s]=upv;
-        if($5 ~ /:/) SIDCIP[s]=$5;
+        if(tx!="")  SIDTX[s]=tx;
+        if(rx!="")  SIDRX[s]=rx;
+        if(tot!="") SIDTOT[s]=tot;
+        if(upv!="") SIDUP[s]=upv;
+        ip=client_ip(); if(ip!="") SIDCIP[s]=ip;
+        SIDTS[s]=$1" "$2;
+        next;
       }
       END {
         for(s in SIDPP){
           pp=SIDPP[s];
-          print pp"|"SIDCIP[s]"|"SIDTX[s]"|"SIDRX[s]"|"SIDTOT[s]"|"SIDUP[s]
+          print pp"|"SIDCIP[s]"|"SIDTX[s]"|"SIDRX[s]"|"SIDTOT[s]"|"SIDUP[s]"|"SIDTS[s]
         }
       }
     ' "$WSLOG" 2>/dev/null
   )
 fi
+
+# --- 4) decide which proxy-ports are ACTIVE right now ---------------------
+# A session is active if it has a live socket to dropbear (ss) OR it has a
+# fresh [MONITOR] heartbeat in ssh-ws.log. The heartbeat check makes the
+# monitor authoritative for liveness and avoids missing sessions when `ss`
+# does not surface the loopback socket.
+LIVE_WINDOW=45   # seconds; monitor emits roughly every ~10s
+now_epoch=$(date +%s)
+declare -A ACTIVEPORT
+for p in "${!LIVEPORT[@]}"; do
+  ACTIVEPORT[$p]=1
+done
+for pport in "${!S_PORT[@]}"; do
+  ts="${S_TS[$pport]}"
+  [[ -z "$ts" ]] && continue
+  e=$(date -d "$ts" +%s 2>/dev/null) || continue
+  [[ -z "$e" ]] && continue
+  if (( now_epoch - e <= LIVE_WINDOW )); then
+    ACTIVEPORT[$pport]=1
+  fi
+done
 
 clear
 ui_header "SSH LIVE SESSION MONITOR"
@@ -91,8 +142,8 @@ ui_header "SSH LIVE SESSION MONITOR"
 declare -A USER_SESS
 total_live=0
 
-# Iterate live proxy-ports (authoritative liveness), correlate to user + bandwidth.
-for pport in "${!LIVEPORT[@]}"; do
+# Iterate active proxy-ports, correlate to user + bandwidth.
+for pport in "${!ACTIVEPORT[@]}"; do
   user="${PORT2USER[$pport]}"
   [[ -z "$user" ]] && user="(detecting)"
   cip="${S_CIP[$pport]}"; cip="${cip%%:*}"; [[ -z "$cip" ]] && cip="(detecting)"
@@ -115,9 +166,12 @@ fi
 ui_rule
 echo -e " ${WHITE}PER-USER SESSIONS (vs IP limit)${NC}"
 ui_rule
+shown_users=0
 while IFS='|' read -r u limit; do
   [[ -z "$u" ]] && continue
   cnt=${USER_SESS[$u]:-0}
+  # Only show usernames that actually have an active connection.
+  [[ "$cnt" -le 0 ]] && continue
   col="$GREEN"
   if [[ "$limit" == "0" ]]; then
     limd="Unlimited"
@@ -126,7 +180,11 @@ while IFS='|' read -r u limit; do
     [[ "$cnt" -gt "$limit" ]] && col="$RED"
   fi
   printf " ${WHITE}%-14s${NC} ${col}%s / %s${NC}\n" "$u" "$cnt" "$limd"
+  shown_users=$((shown_users+1))
 done < <(db_query "SELECT username, limit_ip FROM accounts WHERE protocol='ssh' AND status='active' ORDER BY username;")
+if [[ $shown_users -eq 0 ]]; then
+  echo -e " ${YELLOW}No users with active connections.${NC}"
+fi
 ui_rule
 echo -e " Total live sessions : ${GREEN}${total_live}${NC}"
 ui_foot

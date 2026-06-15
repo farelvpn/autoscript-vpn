@@ -177,18 +177,63 @@ duration_to_seconds() {
 tg_is_configured() {
   [[ -s "$AS_BOTKEY" && -s "$AS_CHATID" ]]
 }
-tg_send() {
-  local text="$1"
-  local token chat
+
+# Escape a string for Telegram HTML parse_mode. Per Telegram docs only &, <, >
+# must be escaped (and & must be done first). Raw '&' inside vless/trojan
+# share-links was making the API reject messages with HTTP 400.
+html_escape() {
+  local s="$1"
+  s=${s//&/&amp;}
+  s=${s//</&lt;}
+  s=${s//>/&gt;}
+  printf '%s' "$s"
+}
+
+# Low-level Telegram sendMessage. Args: body [parse_mode]. Echoes raw response.
+_tg_raw() {
+  local body="$1" mode="$2" token chat
   token=$(cat "$AS_BOTKEY" 2>/dev/null)
   chat=$(cat "$AS_CHATID" 2>/dev/null)
   [[ -z "$token" || -z "$chat" ]] && return 1
+  local args=(-s --max-time 25 -X POST
+    "https://api.telegram.org/bot${token}/sendMessage"
+    -d chat_id="${chat}" -d disable_web_page_preview="true")
+  [[ -n "$mode" ]] && args+=(-d parse_mode="$mode")
+  args+=(--data-urlencode "text=${body}")
+  curl "${args[@]}" 2>/dev/null
+}
+
+# Extract a numeric "retry_after" from a 429 response (default 2s).
+_tg_retry_after() {
+  local n; n=$(printf '%s' "$1" | grep -o '"retry_after":[0-9]\+' | grep -o '[0-9]\+')
+  [[ "$n" =~ ^[0-9]+$ ]] && echo "$n" || echo 2
+}
+
+# Send a Telegram message. Tries HTML first; on rate-limit (429) it honours
+# retry_after and retries; if HTML parsing still fails it falls back to plain
+# text (tags stripped) so the content is delivered regardless. Returns 0 only
+# when Telegram confirms "ok":true.
+tg_send() {
+  local text="$1" resp
+  tg_is_configured || return 1
   # Accept both real newlines and literal %0A markers in the message body.
   text=${text//%0A/$'\n'}
-  curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
-    -d chat_id="${chat}" -d parse_mode="HTML" \
-    -d disable_web_page_preview="true" \
-    --data-urlencode "text=${text}" >/dev/null 2>&1
+
+  resp=$(_tg_raw "$text" "HTML")
+  if [[ "$resp" == *'"error_code":429'* ]]; then
+    sleep "$(_tg_retry_after "$resp")"
+    resp=$(_tg_raw "$text" "HTML")
+  fi
+  [[ "$resp" == *'"ok":true'* ]] && return 0
+
+  # Fallback: deliver as plain text (strip HTML tags) so it never silently drops.
+  local plain; plain=$(printf '%s' "$text" | sed -e 's/<[^>]*>//g')
+  resp=$(_tg_raw "$plain" "")
+  if [[ "$resp" == *'"error_code":429'* ]]; then
+    sleep "$(_tg_retry_after "$resp")"
+    resp=$(_tg_raw "$plain" "")
+  fi
+  [[ "$resp" == *'"ok":true'* ]]
 }
 
 # --- Require root ---

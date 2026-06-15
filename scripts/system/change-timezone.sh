@@ -26,9 +26,10 @@ if timedatectl set-timezone "$new_tz" 2>/dev/null; then
     echo "------------------------------------------------------------"
     echo -e "\e[32mTimezone successfully changed to: $new_tz\e[0m"
     echo "Current System Time: $(date)"
-    
-    # Restart cron to apply new timezone schedule
-    systemctl restart crond 2>/dev/null
+
+    # Re-arm systemd timers so OnCalendar schedules recompute for the new TZ.
+    systemctl daemon-reload 2>/dev/null
+    systemctl restart autoexpire.timer limit-ip-ssh.timer backup.timer fixlog.timer 2>/dev/null
 else
     echo -e "\e[31mFailed to set timezone. Please check the spelling (e.g., Asia/Jakarta).\e[0m"
 fi

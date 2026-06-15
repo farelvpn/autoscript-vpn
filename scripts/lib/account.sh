@@ -188,12 +188,164 @@ ssh_tg_text() {
 EOF
 }
 
+# ---- XRAY TELEGRAM MESSAGE BUILDER (shared by add-* and add-bulk) ----
+# Build a vmess:// share link (base64 JSON). Args: ps add id port tls
+_vmess_link() {
+  local ps="$1" add="$2" id="$3" port="$4" tls="$5"
+  jq -nc --arg ps "$ps" --arg add "$add" --arg port "$port" \
+        --arg id "$id" --arg host "$add" --arg tls "$tls" \
+        '{v:"2",ps:$ps,add:$add,port:$port,id:$id,aid:"0",net:"ws",path:"/",type:"none",host:$host,tls:$tls}' \
+    | base64 -w 0 | sed 's/^/vmess:\/\//'
+}
+
+# Telegram HTML message for an xray account (vless/vmess/trojan). Every dynamic
+# value is HTML-escaped (Telegram HTML parse_mode needs &,<,> escaped; raw '&'
+# in vless/trojan links was causing the API to reject the message).
+# Args: proto user secret domain quota_disp ip_disp exp_disp [title]
+xray_tg_text() {
+  local proto="$1" user="$2" secret="$3" domain="$4" quota_disp="$5" ip_disp="$6" exp_disp="$7" title="$8"
+  local eu ed es eq ei ex link1 link2
+  eu=$(html_escape "$user");       ed=$(html_escape "$domain")
+  es=$(html_escape "$secret");     eq=$(html_escape "$quota_disp")
+  ei=$(html_escape "$ip_disp");    ex=$(html_escape "$exp_disp")
+
+  case "$proto" in
+    vless)
+      [[ -z "$title" ]] && title="VLESS ACCOUNT"
+      link1=$(html_escape "vless://${secret}@${domain}:443?path=/vless&security=tls&encryption=none&type=ws&host=${domain}&sni=${domain}#${user}")
+      link2=$(html_escape "vless://${secret}@${domain}:80?path=/vless&encryption=none&type=ws&host=${domain}#${user}")
+      cat <<EOF
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>      ⊹ $(html_escape "$title") ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Remarks   :</b> <code>${eu}</code>
+<b>Host/IP   :</b> <code>${ed}</code>
+<b>Port TLS  :</b> <code>443</code>
+<b>Port HTTP :</b> <code>80</code>
+<b>UUID      :</b> <code>${es}</code>
+<b>Encryption:</b> <code>none</code>
+<b>Network   :</b> <code>ws</code>
+<b>Path      :</b> <code>/vless</code>
+<b>Quota     :</b> <code>${eq}</code>
+<b>Limit IP  :</b> <code>${ei}</code>
+<b>Expired   :</b> <code>${ex}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link TLS  :</b>
+<code>${link1}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link HTTP :</b>
+<code>${link2}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+EOF
+      ;;
+    vmess)
+      [[ -z "$title" ]] && title="VMESS ACCOUNT"
+      link1=$(html_escape "$(_vmess_link "$user" "$domain" "$secret" 443 tls)")
+      link2=$(html_escape "$(_vmess_link "$user" "$domain" "$secret" 80 none)")
+      cat <<EOF
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>      ⊹ $(html_escape "$title") ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Remarks   :</b> <code>${eu}</code>
+<b>Host/IP   :</b> <code>${ed}</code>
+<b>Port TLS  :</b> <code>443</code>
+<b>Port HTTP :</b> <code>80</code>
+<b>UUID      :</b> <code>${es}</code>
+<b>AlterId   :</b> <code>0</code>
+<b>Network   :</b> <code>ws</code>
+<b>Path      :</b> <code>/ (multipath)</code>
+<b>Quota     :</b> <code>${eq}</code>
+<b>Limit IP  :</b> <code>${ei}</code>
+<b>Expired   :</b> <code>${ex}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link TLS  :</b>
+<code>${link1}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link HTTP :</b>
+<code>${link2}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+EOF
+      ;;
+    trojan)
+      [[ -z "$title" ]] && title="TROJAN ACCOUNT"
+      link1=$(html_escape "trojan://${secret}@${domain}:443?type=ws&security=tls&host=${domain}&path=/trojan&sni=${domain}#${user}")
+      cat <<EOF
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>      ⊹ $(html_escape "$title") ⊹</b>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Remarks   :</b> <code>${eu}</code>
+<b>Host/IP   :</b> <code>${ed}</code>
+<b>Port TLS  :</b> <code>443</code>
+<b>Key       :</b> <code>${es}</code>
+<b>Network   :</b> <code>ws</code>
+<b>Path      :</b> <code>/trojan</code>
+<b>Quota     :</b> <code>${eq}</code>
+<b>Limit IP  :</b> <code>${ei}</code>
+<b>Expired   :</b> <code>${ex}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+<b>Link TLS  :</b>
+<code>${link1}</code>
+<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
+EOF
+      ;;
+  esac
+}
+
 # ---- XRAY LOGIN MONITOR (shared by cek-vless/vmess/trojan) ----
-# Human-readable bytes.
+# Human-readable bytes with one/two-decimal precision (clear + tidy).
 human_bytes() {
-  local b="${1:-0}" u=(B KB MB GB TB) i=0
-  while (( b >= 1024 && i < 4 )); do b=$(( b / 1024 )); ((i++)); done
-  echo "${b} ${u[$i]}"
+  local b="${1:-0}"
+  [[ "$b" =~ ^[0-9]+$ ]] || b=0
+  if   (( b >= 1099511627776 )); then awk -v x="$b" 'BEGIN{printf "%.2f TB", x/1099511627776}'
+  elif (( b >= 1073741824 ));    then awk -v x="$b" 'BEGIN{printf "%.2f GB", x/1073741824}'
+  elif (( b >= 1048576 ));       then awk -v x="$b" 'BEGIN{printf "%.2f MB", x/1048576}'
+  elif (( b >= 1024 ));          then awk -v x="$b" 'BEGIN{printf "%.2f KB", x/1024}'
+  else echo "${b} B"; fi
+}
+
+# Xray stats API endpoint (StatsService on the dokodemo "api" inbound).
+XRAY_API="${XRAY_API:-127.0.0.1:10085}"
+
+# Read an xray per-user traffic counter (uplink+downlink) in bytes.
+# Xray names per-user counters as: user>>>{email}>>>traffic>>>{uplink|downlink}
+# Args: <user> [reset]   -> pass the literal word "reset" to zero counters.
+# Echoes a non-negative integer (0 when stats are unavailable).
+xray_user_bytes() {
+  local user="$1" reset="${2:-}" total=0 dir v
+  local xb="${AS_XRAY_BIN:-xray}"; [[ -x "$xb" ]] || xb="xray"
+  local -a rflag=(); [[ "$reset" == "reset" ]] && rflag=(-reset)
+  for dir in uplink downlink; do
+    v=$("$xb" api stats --server="$XRAY_API" \
+          -name "user>>>${user}>>>traffic>>>${dir}" "${rflag[@]}" 2>/dev/null \
+        | grep -w value | awk '{print $2}' | tr -d '", ')
+    [[ "$v" =~ ^[0-9]+$ ]] && total=$(( total + v ))
+  done
+  echo "$total"
+}
+
+# Accumulate live traffic into used_bytes and enforce quota for one protocol.
+# Reads (and RESETS) each active user's counters, adds the delta to the DB,
+# then suspends users that exceeded a finite quota. Unlimited users
+# (quota_bytes=0) are still accounted; they are simply never suspended.
+# Arg: protocol (vless|vmess|trojan)
+xray_account_proto() {
+  local proto="$1" user quota used delta
+  while IFS='|' read -r user quota used; do
+    [[ -z "$user" ]] && continue
+    delta=$(xray_user_bytes "$user" reset)
+    if [[ "$delta" =~ ^[0-9]+$ ]] && (( delta > 0 )); then
+      db_exec "UPDATE accounts SET used_bytes = used_bytes + ${delta},
+                      updated_at = strftime('%s','now')
+               WHERE protocol='${proto}' AND username='$(sql_escape "$user")';"
+      used=$(( ${used:-0} + delta ))
+    fi
+    # Enforce only when a finite quota is configured.
+    if [[ "$quota" =~ ^[0-9]+$ ]] && (( quota > 0 )) && (( used >= quota )); then
+      acc_xray_suspend "$proto" "$user" "quota"
+      tg_send "<b>[ ${proto^^} QUOTA EXCEEDED ]</b>%0AUsername: <code>${user}</code>%0AStatus: suspended"
+    fi
+  done < <(db_query "SELECT username, quota_bytes, used_bytes FROM accounts
+                     WHERE protocol='${proto}' AND status='active';")
 }
 
 # Boxed per-account login monitor for an xray protocol.
@@ -243,10 +395,16 @@ xray_cek_monitor() {
     cnt=0
     [[ -n "$ips" ]] && cnt=$(printf '%s\n' "$ips" | grep -c .)
 
-    # Display values.
-    local limd usedd quotad ipcol
+    # Only show usernames that actually have an active connection right now.
+    [[ "$cnt" -le 0 ]] && continue
+
+    # Display values. Usage = persisted used_bytes + live (un-reset) counter,
+    # so the figure is accurate immediately, even between quota-daemon polls.
+    local limd usedd quotad ipcol live used_total
+    live=$(xray_user_bytes "$user")
+    used_total=$(( ${used:-0} + ${live:-0} ))
     [[ "$limit" == "0" ]] && limd="Unlimited" || limd="$limit"
-    usedd=$(human_bytes "${used:-0}")
+    usedd=$(human_bytes "$used_total")
     if [[ "$qb" == "0" ]]; then quotad="Unlimited"; else quotad=$(human_bytes "$qb"); fi
     ipcol="$GREEN"
     if [[ "$limd" != "Unlimited" && "$cnt" -gt "$limit" ]]; then ipcol="$RED"; fi
@@ -255,14 +413,10 @@ xray_cek_monitor() {
     ui_rule
     ui_kv "Username" "$user" "$CYAN"
     ui_kv "Login IP" "${cnt} / ${limd} IP" "$ipcol"
-    ui_kv "Quota" "${usedd} / ${quotad}"
+    ui_kv "Bandwidth" "${usedd} / ${quotad}"
     ui_kv "Expired" "$exp"
-    if [[ -n "$ips" ]]; then
-      printf " ${WHITE}%-12s${NC} :\n" "Active IPs"
-      while read -r one; do [[ -n "$one" ]] && echo -e "                ${GREEN}- ${one}${NC}"; done <<< "$ips"
-    else
-      ui_kv "Active IPs" "(none in last ${RECENT_SECS}s)" "$YELLOW"
-    fi
+    printf " ${WHITE}%-12s${NC} :\n" "Active IPs"
+    while read -r one; do [[ -n "$one" ]] && echo -e "                ${GREEN}- ${one}${NC}"; done <<< "$ips"
     if [[ "$ipcol" == "$RED" ]]; then
       echo -e "                ${RED}[!] EXCEEDS IP LIMIT${NC}"
     fi
@@ -272,6 +426,6 @@ xray_cek_monitor() {
                      ORDER BY username;")
 
   ui_rule
-  [[ $any -eq 0 ]] && echo -e " ${YELLOW}No active ${proto^^} accounts.${NC}"
+  [[ $any -eq 0 ]] && echo -e " ${YELLOW}No ${proto^^} users with active connections.${NC}"
   ui_foot
 }

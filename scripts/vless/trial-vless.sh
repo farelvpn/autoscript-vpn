@@ -26,27 +26,7 @@ exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 vlesslink1="vless://${uuid}@${domain}:443?path=/vless&security=tls&encryption=none&type=ws&host=${domain}&sni=${domain}#${user}"
 vlesslink2="vless://${uuid}@${domain}:80?path=/vless&encryption=none&type=ws&host=${domain}#${user}"
 
-TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>    ⊹ VLESS TRIAL ACCOUNT ⊹</b>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Remarks   :</b> <code>${user}</code>
-<b>Host/IP   :</b> <code>${domain}</code>
-<b>Port TLS  :</b> <code>443</code>
-<b>Port HTTP :</b> <code>80</code>
-<b>UUID      :</b> <code>${uuid}</code>
-<b>Network   :</b> <code>ws</code>
-<b>Path      :</b> <code>/vless</code>
-<b>Quota     :</b> <code>10 GB</code>
-<b>Limit IP  :</b> <code>2</code>
-<b>Expired   :</b> <code>${exp_disp}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Link TLS  :</b>
-<code>${vlesslink1}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Link HTTP :</b>
-<code>${vlesslink2}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
-tg_send "$TEKS"
+tg_send "$(xray_tg_text vless "$user" "$uuid" "$domain" "10 GB" "2" "$exp_disp" "VLESS TRIAL ACCOUNT")"
 
 clear
 ui_header "VLESS TRIAL CREATED"

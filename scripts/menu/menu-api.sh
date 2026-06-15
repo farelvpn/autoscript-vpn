@@ -148,7 +148,7 @@ detail() {
       4) enable ;;
       5) restart ;;
       6) disable ;;
-      0|x|X) clear ; menu ;;
+      0|x|X) clear ; exec menu ;;
       *) err "Invalid option."; sleep 1 ;;
     esac
   done

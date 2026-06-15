@@ -34,28 +34,7 @@ exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 vmesslink1=$(vmess_link 443 tls)
 vmesslink2=$(vmess_link 80 none)
 
-TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>    ⊹ VMESS TRIAL ACCOUNT ⊹</b>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Remarks   :</b> <code>${user}</code>
-<b>Host/IP   :</b> <code>${domain}</code>
-<b>Port TLS  :</b> <code>443</code>
-<b>Port HTTP :</b> <code>80</code>
-<b>UUID      :</b> <code>${uuid}</code>
-<b>AlterId   :</b> <code>0</code>
-<b>Network   :</b> <code>ws</code>
-<b>Path      :</b> <code>/ (multipath)</code>
-<b>Quota     :</b> <code>10 GB</code>
-<b>Limit IP  :</b> <code>2</code>
-<b>Expired   :</b> <code>${exp_disp}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Link TLS  :</b>
-<code>${vmesslink1}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Link HTTP :</b>
-<code>${vmesslink2}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
-tg_send "$TEKS"
+tg_send "$(xray_tg_text vmess "$user" "$uuid" "$domain" "10 GB" "2" "$exp_disp" "VMESS TRIAL ACCOUNT")"
 
 clear
 ui_header "VMESS TRIAL CREATED"

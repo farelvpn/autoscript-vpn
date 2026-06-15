@@ -982,24 +982,107 @@ else
     haproxy_install_logic
 fi
 
-# Setup Crontab
-dnf install cronie -y
+# ---- Scheduled maintenance via systemd timers (NO cron) ----
+# All periodic jobs that used to live in /etc/crontab now run as systemd
+# timer+oneshot units. This removes the cron dependency entirely and gives
+# every job a managed unit that shows up in the Service Status menu.
 
-# Auto-expire (DB-driven), backup, log rotation, and SSH IP-limit enforcement.
-# VLESS/VMESS/Trojan quota & IP-limit run as looping systemd services (below),
-# so they are intentionally NOT in cron.
-echo "* * * * * root xp-ssh" >> /etc/crontab
-echo "* * * * * root xp-vless" >> /etc/crontab
-echo "* * * * * root xp-vmess" >> /etc/crontab
-echo "* * * * * root xp-trojan" >> /etc/crontab
-echo "*/2 * * * * root limit-ip-ssh" >> /etc/crontab
-echo "0 * * * * root backup" >> /etc/crontab
-echo "0 0 * * * root fixlog" >> /etc/crontab
+# Auto-expire all protocols (SSH/VLESS/VMESS/Trojan) once a minute.
+cat > /etc/systemd/system/autoexpire.service <<'EOF'
+[Unit]
+Description=Auto-expire accounts (all protocols)
+After=network.target
 
-# restart service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/expire-all
+EOF
+
+cat > /etc/systemd/system/autoexpire.timer <<'EOF'
+[Unit]
+Description=Run account auto-expire every minute
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=60
+AccuracySec=15s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# SSH IP-limit enforcement every 2 minutes.
+cat > /etc/systemd/system/limit-ip-ssh.service <<'EOF'
+[Unit]
+Description=SSH IP-limit enforcement
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/limit-ip-ssh
+EOF
+
+cat > /etc/systemd/system/limit-ip-ssh.timer <<'EOF'
+[Unit]
+Description=Run SSH IP-limit enforcement every 2 minutes
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=120
+AccuracySec=15s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# Hourly backup.
+cat > /etc/systemd/system/backup.service <<'EOF'
+[Unit]
+Description=Account/database backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/backup
+EOF
+
+cat > /etc/systemd/system/backup.timer <<'EOF'
+[Unit]
+Description=Run backup hourly
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# Daily log maintenance.
+cat > /etc/systemd/system/fixlog.service <<'EOF'
+[Unit]
+Description=Log maintenance (cap sizes, keep recent monitor data)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fixlog
+EOF
+
+cat > /etc/systemd/system/fixlog.timer <<'EOF'
+[Unit]
+Description=Run log maintenance daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
 systemctl daemon-reload
-systemctl enable crond --now
-systemctl restart crond
+systemctl enable --now autoexpire.timer limit-ip-ssh.timer backup.timer fixlog.timer
 
 # Install Package Lain
 curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.rpm.sh | sudo bash

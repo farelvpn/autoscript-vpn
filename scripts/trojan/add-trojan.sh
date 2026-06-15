@@ -42,23 +42,8 @@ exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 
 trojanlink1="trojan://${secret}@${domain}:443?type=ws&security=tls&host=${domain}&path=/trojan&sni=${domain}#${user}"
 
-TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>      ⊹ TROJAN ACCOUNT ⊹</b>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Remarks   :</b> <code>${user}</code>
-<b>Host/IP   :</b> <code>${domain}</code>
-<b>Port TLS  :</b> <code>443</code>
-<b>Key       :</b> <code>${secret}</code>
-<b>Network   :</b> <code>ws</code>
-<b>Path      :</b> <code>/trojan</code>
-<b>Quota     :</b> <code>${quota_disp}</code>
-<b>Limit IP  :</b> <code>${ip_disp}</code>
-<b>Expired   :</b> <code>${exp_disp}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Link TLS  :</b>
-<code>${trojanlink1}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
-tg_send "$TEKS"
+# Telegram (HTML, properly escaped + delivery-checked via tg_send)
+tg_send "$(xray_tg_text trojan "$user" "$secret" "$domain" "$quota_disp" "$ip_disp" "$exp_disp")"
 
 clear
 ui_header "TROJAN ACCOUNT CREATED"

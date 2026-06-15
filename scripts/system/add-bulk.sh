@@ -44,23 +44,42 @@ if [[ "$proto" != "ssh" ]]; then
 fi
 
 exp_epoch=$(( $(date +%s) + days * 86400 ))
+exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
+[[ "$limit_ip" == "0" ]] && ip_disp="Unlimited" || ip_disp="$limit_ip"
+[[ "$quota" == "0" ]] && quota_disp="Unlimited" || quota_disp="${quota} GB"
 success=0
+sent=0
 
 for (( i=1; i<=count; i++ )); do
   user="${prefix}$(gen_pass 4 | tr 'A-Z' 'a-z')"
   if [[ "$proto" == "ssh" ]]; then
     pass=$(gen_pass 10)
-    acc_ssh_create "$user" "$pass" "$limit_ip" "$days" >/dev/null 2>&1 && {
-      success=$((success+1)); echo "SSH  $user / $pass"; }
+    if acc_ssh_create "$user" "$pass" "$limit_ip" "$days" >/dev/null 2>&1; then
+      success=$((success+1)); echo "SSH  $user / $pass"
+      # One Telegram message per account.
+      if tg_send "$(ssh_tg_text "$user" "$pass" "$ip_disp" "$exp_disp" "SSH ACCOUNT (BULK)")"; then
+        sent=$((sent+1))
+      fi
+    fi
   else
     secret=$(gen_uuid)
-    acc_xray_create "$proto" "$user" "$secret" "$quota" "$limit_ip" "$exp_epoch" >/dev/null 2>&1 && {
-      success=$((success+1)); echo "${proto^^}  $user / $secret"; }
+    if acc_xray_create "$proto" "$user" "$secret" "$quota" "$limit_ip" "$exp_epoch" >/dev/null 2>&1; then
+      success=$((success+1)); echo "${proto^^}  $user / $secret"
+      # One Telegram message per account.
+      if tg_send "$(xray_tg_text "$proto" "$user" "$secret" "$domain" "$quota_disp" "$ip_disp" "$exp_disp" "${proto^^} ACCOUNT (BULK)")"; then
+        sent=$((sent+1))
+      fi
+    fi
   fi
 done
 
 line
 ok "Created ${success}/${count} ${proto} accounts."
+if tg_is_configured; then
+  ok "Telegram: ${sent}/${success} per-account messages sent."
+else
+  warn "Telegram not configured (set it via System > Telegram); no messages sent."
+fi
 line
 read -n 1 -s -r -p "Press any key to menu..."
 menu

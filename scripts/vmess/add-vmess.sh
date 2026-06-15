@@ -51,28 +51,8 @@ exp_disp=$(date -d "@${exp_epoch}" +"%Y-%m-%d %H:%M:%S")
 vmesslink1=$(vmess_link 443 tls)
 vmesslink2=$(vmess_link 80 none)
 
-TEKS="<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>      ⊹ VMESS ACCOUNT ⊹</b>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Remarks   :</b> <code>${user}</code>
-<b>Host/IP   :</b> <code>${domain}</code>
-<b>Port TLS  :</b> <code>443</code>
-<b>Port HTTP :</b> <code>80</code>
-<b>UUID      :</b> <code>${uuid}</code>
-<b>AlterId   :</b> <code>0</code>
-<b>Network   :</b> <code>ws</code>
-<b>Path      :</b> <code>/ (multipath)</code>
-<b>Quota     :</b> <code>${quota_disp}</code>
-<b>Limit IP  :</b> <code>${ip_disp}</code>
-<b>Expired   :</b> <code>${exp_disp}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Link TLS  :</b>
-<code>${vmesslink1}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>
-<b>Link HTTP :</b>
-<code>${vmesslink2}</code>
-<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>"
-tg_send "$TEKS"
+# Telegram (HTML, properly escaped + delivery-checked via tg_send)
+tg_send "$(xray_tg_text vmess "$user" "$uuid" "$domain" "$quota_disp" "$ip_disp" "$exp_disp")"
 
 clear
 ui_header "VMESS ACCOUNT CREATED"

@@ -34,6 +34,7 @@ echo "[1/9] Stopping and disabling services..."
 SERVICES=(
     haproxy xray nginx dropbear ssh-ws server
     quota limit-ip-vless quota-trojan limit-ip-trojan quota-vmess limit-ip-vmess
+    autoexpire.timer limit-ip-ssh.timer backup.timer fixlog.timer
     openvpn-server@server-udp-2200 openvpn-server@server-tcp-1194
 )
 for svc in "${SERVICES[@]}"; do
@@ -53,6 +54,11 @@ rm -f /etc/systemd/system/quota-vmess.service
 rm -f /etc/systemd/system/limit-ip-vless.service
 rm -f /etc/systemd/system/limit-ip-trojan.service
 rm -f /etc/systemd/system/limit-ip-vmess.service
+# Scheduled-maintenance timers + their oneshot services (replaced cron).
+rm -f /etc/systemd/system/autoexpire.timer   /etc/systemd/system/autoexpire.service
+rm -f /etc/systemd/system/limit-ip-ssh.timer /etc/systemd/system/limit-ip-ssh.service
+rm -f /etc/systemd/system/backup.timer       /etc/systemd/system/backup.service
+rm -f /etc/systemd/system/fixlog.timer       /etc/systemd/system/fixlog.service
 systemctl daemon-reload
 
 # ---------------------------------------------------------------------------
@@ -132,11 +138,13 @@ rm -rf /var/www/html/risqinf
 rm -rf /var/log/xray
 
 # ---------------------------------------------------------------------------
-echo "[7/9] Cleaning up crontab and login profile..."
+echo "[7/9] Cleaning up legacy crontab entries and login profile..."
+# Newer installs use systemd timers (removed above), but strip any leftover
+# crontab lines from older cron-based installs so nothing dangles.
 for pat in xp-ssh xp-vless xp-vmess xp-trojan limit-ip-ssh backup fixlog cek-; do
     sed -i "/ $pat/d" /etc/crontab 2>/dev/null
 done
-systemctl restart crond 2>/dev/null
+systemctl restart crond 2>/dev/null || true
 # Restore a normal root login profile (installer set 'clear ; menu').
 [[ -f /root/.profile ]] && grep -q "menu" /root/.profile && : > /root/.profile
 

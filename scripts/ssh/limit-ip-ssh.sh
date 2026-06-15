@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ========================================================
 # Project: Autoscript VPN by risqinf
-# Description: SSH IP-limit enforcement (live-session correlated; run by cron)
+# Description: SSH IP-limit enforcement (live-session correlated; run by timer)
 # License: Apache License 2.0 (see LICENSE file)
 # Repository: https://github.com/risqinf/autoscript
 # ========================================================
